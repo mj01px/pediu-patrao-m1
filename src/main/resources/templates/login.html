@@ -36,6 +36,9 @@
             <!-- Espaço para a logo -->
             <img th:src="@{/images/logo.png}" alt="Logo" class="logo">
             <h3 class="mb-4">Bem-vindo</h3>
+            <!-- ?error e ?logout sao colocados pelo Spring Security na URL -->
+            <p class="text-danger small" th:if="${param.error}">Login ou senha incorretos.</p>
+            <p class="text-success small" th:if="${param.logout}">Sessão encerrada com sucesso.</p>
             
             <!-- Formulário de Login -->
             <form th:action="@{/login}" method="post">

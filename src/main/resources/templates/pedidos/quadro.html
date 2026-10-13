@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <title>Quadro de Pedidos</title>
+</head>
+<body>
+
+<div th:fragment="content">
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="fw-bold mb-0"><i class="bi bi-kanban me-2 text-primary"></i>Quadro de pedidos</h2>
+        <a href="/pedidos/novo" class="btn btn-primary" sec:authorize="hasAnyRole('GERENTE', 'ATENDENTE')">
+            <i class="bi bi-plus-lg me-1"></i> Novo pedido
+        </a>
+    </div>
+
+    <div class="alert alert-danger" th:if="${erro}" th:text="${erro}"></div>
+
+    <!-- Colunas ativas: Recebidos, No forno, Prontos, Sairam -->
+    <div class="row g-3 mb-4">
+        <div class="col-12 col-md-6 col-xl-3" th:each="coluna : ${colunas}">
+            <div class="card h-100 border-0 border-top border-4" th:classappend="${'border-' + coluna.cor}">
+                <div class="card-header bg-white d-flex justify-content-between">
+                    <span class="fw-medium" th:text="${coluna.titulo}"></span>
+                    <span class="badge" th:classappend="${'text-bg-' + coluna.cor}" th:text="${#lists.size(coluna.pedidos)}"></span>
+                </div>
+                <div class="card-body bg-light p-2" style="min-height: 180px;">
+                    <p class="text-muted small text-center mt-4" th:if="${#lists.isEmpty(coluna.pedidos)}">Nada por aqui.</p>
+                    <th:block th:each="pedido : ${coluna.pedidos}">
+                        <div th:replace="~{pedidos/cartao :: cartao(${pedido})}"></div>
+                    </th:block>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pedidos finalizados e cancelados -->
+    <h5 class="fw-semibold">Encerrados</h5>
+    <div class="card shadow-sm">
+        <div class="card-body p-0 table-responsive">
+            <table class="table table-sm align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-3">Cliente</th>
+                        <th>Entrada</th>
+                        <th>Situação</th>
+                        <th class="text-end">Total</th>
+                        <th class="pe-3"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:if="${#lists.isEmpty(encerrados)}">
+                        <td colspan="5" class="text-center text-muted py-3">Nenhum pedido encerrado.</td>
+                    </tr>
+                    <tr th:each="pedido : ${encerrados}">
+                        <td class="ps-3" th:text="${pedido.nomeCliente}"></td>
+                        <td class="small" th:text="${#temporals.format(pedido.entrada.momento, 'dd/MM HH:mm')}"></td>
+                        <td>
+                            <span class="badge"
+                                  th:classappend="${pedido.cancelamento != null} ? 'text-bg-danger' : 'text-bg-success'"
+                                  th:text="${pedido.status.rotulo}"></span>
+                            <small class="text-muted" th:if="${pedido.cancelamento != null}"
+                                   th:text="${pedido.motivoCancelamento}"></small>
+                        </td>
+                        <td class="text-end" th:text="${'R$ ' + #numbers.formatDecimal(pedido.total, 1, 'POINT', 2, 'COMMA')}"></td>
+                        <td class="pe-3 text-end">
+                            <a th:href="@{/pedidos/{id}(id=${pedido.id})}" class="btn btn-sm btn-outline-secondary">Detalhes</a>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Modal de desconto (so existe na pagina do GERENTE) -->
+    <div class="modal fade" id="modalDesconto" tabindex="-1" sec:authorize="hasRole('GERENTE')">
+        <div class="modal-dialog">
+            <form class="modal-content" onsubmit="enviarDesconto(event)">
+                <div class="modal-header">
+                    <h5 class="modal-title">Aplicar desconto</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="descontoPedido">
+                    <input type="hidden" id="descontoSubtotal">
+                    <label for="descontoPercentual" class="form-label">Percentual (%)</label>
+                    <!-- Sem "max" de proposito: quem impoe o limite de 20% e o servidor -->
+                    <input type="number" step="0.01" id="descontoPercentual" class="form-control" required
+                           oninput="previaDesconto()">
+                    <div class="form-text" id="descontoPrevia">O limite de 20% é validado pelo servidor.</div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Fechar</button>
+                    <button type="submit" class="btn btn-success">Aplicar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal de cancelamento (so existe na pagina do GERENTE) -->
+    <div class="modal fade" id="modalCancelamento" tabindex="-1" sec:authorize="hasRole('GERENTE')">
+        <div class="modal-dialog">
+            <form class="modal-content" onsubmit="enviarCancelamento(event)">
+                <div class="modal-header">
+                    <h5 class="modal-title">Cancelar pedido</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="cancelamentoPedido">
+                    <label for="cancelamentoMotivo" class="form-label">Motivo (obrigatório)</label>
+                    <textarea id="cancelamentoMotivo" class="form-control" rows="3" maxlength="500"
+                              placeholder="Ex.: cliente desistiu por telefone"></textarea>
+                    <div class="form-text">Fica registrado na auditoria. O pedido não poderá mais ser alterado.</div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Voltar</button>
+                    <button type="submit" class="btn btn-danger">Confirmar cancelamento</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Ao abrir um modal, guarda qual pedido disparou (data-pedido do botao)
+        document.getElementById('modalDesconto')?.addEventListener('show.bs.modal', evento => {
+            document.getElementById('descontoPedido').value = evento.relatedTarget.dataset.pedido;
+            document.getElementById('descontoSubtotal').value = evento.relatedTarget.dataset.subtotal;
+            document.getElementById('descontoPercentual').value = '';
+            previaDesconto();
+        });
+        document.getElementById('modalCancelamento')?.addEventListener('show.bs.modal', evento => {
+            document.getElementById('cancelamentoPedido').value = evento.relatedTarget.dataset.pedido;
+            document.getElementById('cancelamentoMotivo').value = '';
+        });
+
+        function previaDesconto() {
+            const subtotal = Number(document.getElementById('descontoSubtotal').value);
+            const percentual = Number(document.getElementById('descontoPercentual').value.replace(',', '.')) || 0;
+            document.getElementById('descontoPrevia').textContent =
+                'Prévia: ' + PP.moeda(subtotal - subtotal * percentual / 100) + ' (o limite de 20% é validado pelo servidor)';
+        }
+
+        async function moverPedido(botao) {
+            botao.disabled = true;
+            const url = `/api/pedidos/${encodeURIComponent(botao.dataset.pedido)}/status?status=${botao.dataset.etapa}`;
+            if (await PP.api(url, 'PUT')) {
+                location.reload();
+            } else {
+                botao.disabled = false;
+            }
+        }
+
+        async function enviarDesconto(evento) {
+            evento.preventDefault();
+            const id = document.getElementById('descontoPedido').value;
+            const percentual = Number(document.getElementById('descontoPercentual').value.replace(',', '.'));
+            if (await PP.api(`/api/pedidos/${encodeURIComponent(id)}/desconto`, 'PUT', { percentual })) {
+                location.reload();
+            }
+        }
+
+        async function enviarCancelamento(evento) {
+            evento.preventDefault();
+            const id = document.getElementById('cancelamentoPedido').value;
+            const motivo = document.getElementById('cancelamentoMotivo').value;
+            if (await PP.api(`/api/pedidos/${encodeURIComponent(id)}/cancelamento`, 'POST', { motivo })) {
+                location.reload();
+            }
+        }
+    </script>
+
+</div>
+
+</body>
+</html>

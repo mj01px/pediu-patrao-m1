@@ -1,61 +1,154 @@
 package com.umc.pediupatrao.service;
 
+import com.umc.pediupatrao.dto.UsuarioFormDTO;
+import com.umc.pediupatrao.entity.Perfil;
+import com.umc.pediupatrao.entity.TipoEvento;
 import com.umc.pediupatrao.entity.Usuario;
+import com.umc.pediupatrao.erro.NaoEncontradoException;
+import com.umc.pediupatrao.erro.NegocioException;
 import com.umc.pediupatrao.repository.UsuarioRepository;
+import com.umc.pediupatrao.seguranca.RegrasAcesso;
+import com.umc.pediupatrao.seguranca.UsuarioLogado;
+import java.util.List;
+import java.util.Optional;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.Sort;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.util.Optional;
-
+/** Administracao de usuarios. Toda a classe e exclusiva do ADMIN. */
 @Service
+@PreAuthorize(RegrasAcesso.SO_ADMIN)
 public class UsuarioService {
+
+    private static final String ENTIDADE = "Usuario";
+    private static final int SENHA_MINIMA = 8;
 
     private final UsuarioRepository usuarioRepository;
     private final PasswordEncoder passwordEncoder;
+    private final UsuarioLogado usuarioLogado;
+    private final ApplicationEventPublisher eventos;
 
-    public UsuarioService(UsuarioRepository usuarioRepository, PasswordEncoder passwordEncoder) {
+    public UsuarioService(UsuarioRepository usuarioRepository, PasswordEncoder passwordEncoder,
+            UsuarioLogado usuarioLogado, ApplicationEventPublisher eventos) {
         this.usuarioRepository = usuarioRepository;
         this.passwordEncoder = passwordEncoder;
+        this.usuarioLogado = usuarioLogado;
+        this.eventos = eventos;
     }
 
-    // Busca um usuário por ID
-    public Optional<Usuario> buscarPorId(String id) {
+    public List<Usuario> listar() {
+        return usuarioRepository.findAll(Sort.by("perfil", "username"));
+    }
+
+    public Optional<Usuario> buscar(String id) {
         return usuarioRepository.findById(id);
     }
 
-    // Busca um usuário por username
-    public Optional<Usuario> buscarPorUsername(String username) {
-        return usuarioRepository.findByUsername(username);
+    public Usuario criar(UsuarioFormDTO form) {
+        String login = loginNormalizado(form);
+        exigirPerfil(form.getPerfil());
+        if (usuarioRepository.existsByUsername(login)) {
+            throw new NegocioException("O login " + login + " já está em uso.");
+        }
+        if (!form.informouSenha()) {
+            throw new NegocioException("Defina uma senha para o novo usuário.");
+        }
+        exigirSenhaForte(form.getSenha());
+
+        Usuario novo = new Usuario();
+        novo.setUsername(login);
+        novo.setPerfil(form.getPerfil());
+        novo.setPassword(passwordEncoder.encode(form.getSenha()));
+        Usuario salvo = usuarioRepository.save(novo);
+
+        eventos.publishEvent(RegistroAlteracao.de(TipoEvento.USUARIO_CRIADO, ENTIDADE, salvo.getId(),
+                Mudancas.nova().registrar("username", null, login).registrar("perfil", null, salvo.getPerfil())));
+        return salvo;
     }
 
-    // Salva um novo usuário (criptografando a senha)
-    public void salvarUsuario(Usuario usuario) {
-        usuario.setPassword(passwordEncoder.encode(usuario.getPassword())); // Criptografa a senha
-        usuarioRepository.save(usuario);
+    public Usuario alterar(String id, UsuarioFormDTO form) {
+        Usuario alvo = usuarioRepository.findById(id).orElseThrow(() -> new NaoEncontradoException("Usuário", id));
+        String login = loginNormalizado(form);
+        exigirPerfil(form.getPerfil());
+        if (usuarioRepository.existsByUsernameAndIdNot(login, id)) {
+            throw new NegocioException("O login " + login + " já está em uso.");
+        }
+        protegerContraAutoalteracao(alvo, form.getPerfil());
+
+        Mudancas mudancas = Mudancas.nova()
+                .registrar("username", alvo.getUsername(), login)
+                .registrar("perfil", alvo.getPerfil(), form.getPerfil());
+        alvo.setUsername(login);
+        alvo.setPerfil(form.getPerfil());
+
+        if (form.informouSenha()) {
+            exigirSenhaForte(form.getSenha());
+            alvo.setPassword(passwordEncoder.encode(form.getSenha()));
+            // A trilha registra QUE a senha mudou, nunca o valor
+            mudancas.registrar("senha", "(sigilo)", "(redefinida)");
+        }
+
+        Usuario salvo = usuarioRepository.save(alvo);
+        if (!mudancas.vazia()) {
+            eventos.publishEvent(RegistroAlteracao.de(TipoEvento.USUARIO_ALTERADO, ENTIDADE, id, mudancas));
+        }
+        return salvo;
     }
 
-    // Deleta um usuário pelo ID
-    public void deletarUsuario(String id) {
+    public void remover(String id) {
+        Usuario alvo = usuarioRepository.findById(id).orElseThrow(() -> new NaoEncontradoException("Usuário", id));
+        if (ehOProprio(alvo)) {
+            throw new NegocioException("Você não pode remover o seu próprio usuário.");
+        }
+        if (alvo.getPerfil() == Perfil.ADMIN) {
+            garantirOutroAdmin();
+        }
         usuarioRepository.deleteById(id);
+        eventos.publishEvent(RegistroAlteracao.de(TipoEvento.USUARIO_REMOVIDO, ENTIDADE, id,
+                Mudancas.nova().registrar("username", alvo.getUsername(), null).registrar("perfil", alvo.getPerfil(), null)));
     }
 
-    // Lista todos os usuários
-    public Iterable<Usuario> listarTodos() {
-        return usuarioRepository.findAll();
+    /** Ninguem muda o proprio perfil (nem para cima, nem para baixo) e sempre sobra um ADMIN. */
+    private void protegerContraAutoalteracao(Usuario alvo, Perfil novoPerfil) {
+        if (alvo.getPerfil() == novoPerfil) {
+            return;
+        }
+        if (ehOProprio(alvo)) {
+            throw new NegocioException("Você não pode alterar o seu próprio perfil.");
+        }
+        if (alvo.getPerfil() == Perfil.ADMIN) {
+            garantirOutroAdmin();
+        }
     }
 
-    // Atualiza o usuário usuários
-    public void atualizarUsuario(String id, Usuario usuarioAtualizado) {
-        usuarioRepository.findById(id).ifPresent(usuarioExistente -> {
-            usuarioExistente.setUsername(usuarioAtualizado.getUsername());
-            usuarioExistente.setRole(usuarioAtualizado.getRole());
+    private boolean ehOProprio(Usuario alvo) {
+        return alvo.getUsername().equals(usuarioLogado.operador().login());
+    }
 
-            // Só atualiza a senha se uma nova foi informada
-            if (usuarioAtualizado.getPassword() != null && !usuarioAtualizado.getPassword().isBlank()) {
-                usuarioExistente.setPassword(passwordEncoder.encode(usuarioAtualizado.getPassword()));
-            }
+    private void garantirOutroAdmin() {
+        if (usuarioRepository.countByPerfil(Perfil.ADMIN) < 2) {
+            throw new NegocioException("O sistema precisa de pelo menos um ADMIN.");
+        }
+    }
 
-            usuarioRepository.save(usuarioExistente);
-        });
+    private static void exigirPerfil(Perfil perfil) {
+        if (perfil == null) {
+            throw new NegocioException("Escolha um perfil: ADMIN, GERENTE ou ATENDENTE.");
+        }
+    }
+
+    private static void exigirSenhaForte(String senha) {
+        if (senha.length() < SENHA_MINIMA) {
+            throw new NegocioException("A senha precisa de pelo menos " + SENHA_MINIMA + " caracteres.");
+        }
+    }
+
+    private static String loginNormalizado(UsuarioFormDTO form) {
+        if (form.getUsername() == null || form.getUsername().isBlank()) {
+            throw new NegocioException("Informe o login.");
+        }
+        return form.getUsername().trim().toLowerCase();
     }
 }

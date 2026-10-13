@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Pedido</title>
+</head>
+<body>
+
+<div th:fragment="content" th:with="p=${pedido}">
+
+    <div class="d-flex align-items-center gap-3 mb-4">
+        <a href="/pedidos" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i></a>
+        <h2 class="fw-bold mb-0" th:text="${'Pedido de ' + p.nomeCliente}"></h2>
+        <span class="badge text-bg-dark fs-6" th:text="${p.status.rotulo}"></span>
+    </div>
+
+    <div class="alert alert-danger" th:if="${p.cancelamento != null}">
+        <strong>Cancelado</strong> por <span th:text="${p.cancelamento.usuario}"></span>
+        em <span th:text="${#temporals.format(p.cancelamento.momento, 'dd/MM/yyyy HH:mm')}"></span>.
+        Motivo: <em th:text="${p.motivoCancelamento}"></em>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-lg-7">
+            <div class="card shadow-sm mb-3">
+                <div class="card-header fw-medium">Itens</div>
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item d-flex justify-content-between" th:each="item : ${p.itens}">
+                        <span>
+                            <span th:text="${item}"></span>
+                            <small class="text-muted"
+                                   th:text="${'(R$ ' + #numbers.formatDecimal(item.precoUnitario, 1, 'POINT', 2, 'COMMA') + ' cada)'}"></small>
+                        </span>
+                        <span th:text="${'R$ ' + #numbers.formatDecimal(item.subtotal, 1, 'POINT', 2, 'COMMA')}"></span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between text-success" th:if="${p.carimboDesconto != null}">
+                        <span>
+                            Desconto de <span th:text="${#numbers.formatDecimal(p.percentualDesconto, 1, 'POINT', 2, 'COMMA') + '%'}"></span>
+                            <small th:text="${'por ' + p.carimboDesconto.usuario}"></small>
+                        </span>
+                        <span th:text="${'- R$ ' + #numbers.formatDecimal(p.desconto, 1, 'POINT', 2, 'COMMA')}"></span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between fw-bold">
+                        <span>Total</span>
+                        <span th:text="${'R$ ' + #numbers.formatDecimal(p.total, 1, 'POINT', 2, 'COMMA')}"></span>
+                    </li>
+                </ul>
+            </div>
+            <div class="text-muted" th:if="${p.observacao}">
+                <i class="bi bi-chat-left-text me-1"></i><span th:text="${p.observacao}"></span>
+            </div>
+        </div>
+
+        <div class="col-lg-5">
+            <div class="card shadow-sm">
+                <div class="card-header fw-medium"><i class="bi bi-clock-history me-1"></i>Linha do tempo</div>
+                <div class="card-body">
+                    <div class="d-flex gap-3 mb-3" th:each="marco, volta : ${p.linhaDoTempo}">
+                        <i class="bi fs-5"
+                           th:classappend="${volta.last} ? 'bi-record-circle-fill text-primary' : 'bi-check-circle text-success'"></i>
+                        <div>
+                            <div class="fw-medium" th:text="${marco.status.rotulo}"></div>
+                            <div class="small text-muted"
+                                 th:text="${#temporals.format(marco.carimbo.momento, 'dd/MM/yyyy HH:mm:ss') + ' por ' + marco.carimbo.usuario}"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+</body>
+</html>

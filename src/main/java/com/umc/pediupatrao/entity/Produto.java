@@ -1,19 +1,22 @@
 package com.umc.pediupatrao.entity;
 
-import jakarta.persistence.Entity;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 @Document(collection = "produtos")
-@Entity
 public class Produto {
-    
+
     @Id
     private String id;
     private String nome;
     private String tipo; // Pizza, Esfiha, Bebida, Lanche
     private Double preco;
     private Boolean ativo;
+
+    /** So produto ativo e com preco valido pode entrar num pedido. */
+    public boolean disponivelParaVenda() {
+        return Boolean.TRUE.equals(ativo) && preco != null && preco > 0;
+    }
 
     public String getId() {
         return id;
@@ -54,6 +57,4 @@ public class Produto {
     public void setAtivo(Boolean ativo) {
         this.ativo = ativo;
     }
-    
-    
 }

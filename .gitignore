@@ -1,1 +1,13 @@
 /target/
+
+# IDEs
+.idea/
+*.iml
+.vscode/
+nbproject/private/
+.classpath
+.project
+.settings/
+
+# Segredos locais (ex.: MONGODB_URI de um cluster Atlas)
+.env

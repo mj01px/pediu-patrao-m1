@@ -16,6 +16,9 @@
         </h2>
     </div>
 
+    <!-- Mensagem de regra de negocio vinda do ClienteService -->
+    <p class="alert alert-warning" style="max-width: 600px;" th:if="${erro}" th:text="${erro}"></p>
+
     <div class="card shadow-sm" style="max-width: 600px;">
         <div class="card-body p-4">
 

@@ -1,5 +1,7 @@
 package com.umc.pediupatrao.entity;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
@@ -8,20 +10,46 @@ public class Cliente {
 
     @Id
     private String id;
+
+    @NotBlank(message = "nome é obrigatório")
+    @Size(max = 120)
     private String nome;
+
+    @NotBlank(message = "telefone é obrigatório")
+    @Size(max = 20)
     private String telefone;
 
     // Endereço completo
+    @Size(max = 9)
     private String cep;
+    @Size(max = 150)
     private String logradouro;
+    @Size(max = 10)
     private String numero;
+    @Size(max = 80)
     private String complemento;
+    @Size(max = 80)
     private String bairro;
+    @Size(max = 80)
     private String cidade;
+    @Size(max = 2)
     private String estado;
 
     // Mantido para compatibilidade com dados antigos
     private String endereco;
+
+    /** Copia os dados cadastrais de outro cliente (nunca o id). */
+    public void atualizarCom(Cliente dados) {
+        this.nome = dados.nome;
+        this.telefone = dados.telefone;
+        this.cep = dados.cep;
+        this.logradouro = dados.logradouro;
+        this.numero = dados.numero;
+        this.complemento = dados.complemento;
+        this.bairro = dados.bairro;
+        this.cidade = dados.cidade;
+        this.estado = dados.estado;
+    }
 
     public String getId() { return id; }
     public void setId(String id) { this.id = id; }
