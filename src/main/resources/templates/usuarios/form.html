@@ -1,52 +1,62 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
-<head>
-    <title>Usuário</title>
-</head>
 <body>
 
-<div th:fragment="content">
+<div th:fragment="content" class="tela" th:with="novo=${usuarioId == null}">
 
-    <div class="d-flex align-items-center gap-3 mb-4">
-        <a href="/usuarios" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i></a>
-        <h2 class="fw-bold mb-0" th:text="${usuarioId == null} ? 'Novo usuário' : 'Editar usuário'"></h2>
-    </div>
-
-    <div class="alert alert-danger" style="max-width: 520px;" th:if="${erro}" th:text="${erro}"></div>
-
-    <div class="card shadow-sm" style="max-width: 520px;">
-        <div class="card-body p-4">
-            <!-- th:action ja insere o campo _csrf escondido -->
-            <form th:action="${usuarioId == null} ? @{/usuarios/salvar} : @{/usuarios/editar/{id}(id=${usuarioId})}"
-                  th:object="${usuario}" method="post">
-
-                <div class="mb-3">
-                    <label for="username" class="form-label">Login</label>
-                    <input type="text" id="username" class="form-control" th:field="*{username}"
-                           placeholder="ex.: maria.souza" autocomplete="off" required>
-                </div>
-
-                <div class="mb-3">
-                    <label for="senha" class="form-label">
-                        Senha <small class="text-muted" th:if="${usuarioId != null}">(em branco mantém a atual)</small>
-                    </label>
-                    <input type="password" id="senha" class="form-control" th:field="*{senha}"
-                           minlength="8" autocomplete="new-password" th:required="${usuarioId == null}">
-                </div>
-
-                <fieldset class="mb-4">
-                    <legend class="form-label fs-6">Perfil</legend>
-                    <div class="form-check" th:each="p : ${perfis}">
-                        <input class="form-check-input" type="radio" th:field="*{perfil}" th:value="${p}">
-                        <label class="form-check-label" th:for="${#ids.prev('perfil')}" th:text="${p.rotulo}"></label>
-                    </div>
-                </fieldset>
-
-                <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i> Salvar</button>
-                <a href="/usuarios" class="btn btn-link">Cancelar</a>
-            </form>
+    <header class="cabecalho-volta">
+        <a href="/usuarios" class="btn-voltar" aria-label="Voltar para equipe">
+            <svg class="ic" aria-hidden="true"><use href="/images/icones.svg#voltar"></use></svg>
+        </a>
+        <div>
+            <div class="sobretitulo" th:text="${novo} ? 'Equipe' : 'Editar usuário'"></div>
+            <h1 th:if="${novo}" class="titulo" style="margin: 0">Novo usuário</h1>
+            <h1 th:unless="${novo}" class="titulo-mono" th:text="${usuario.username}"></h1>
         </div>
+    </header>
+
+    <div class="aviso aviso-erro" role="alert" style="max-width: 640px" th:if="${erro}">
+        <svg class="ic" aria-hidden="true"><use href="/images/icones.svg#erro"></use></svg><span th:text="${erro}"></span>
     </div>
+
+    <!-- th:action ja insere o campo _csrf escondido -->
+    <form class="cartao" style="max-width: 640px; gap: 22px; padding: 28px"
+          th:action="${novo} ? @{/usuarios/salvar} : @{/usuarios/editar/{id}(id=${usuarioId})}"
+          th:object="${usuario}" method="post">
+
+        <label class="campo">Login
+            <input type="text" class="entrada mono" th:field="*{username}" placeholder="ex.: maria.souza"
+                   autocomplete="off" required>
+            <span class="campo-dica">Letras minúsculas, números, ponto, hífen ou underline.</span>
+        </label>
+
+        <label class="campo">
+            <span th:text="${novo} ? 'Senha' : 'Nova senha'">Senha</span>
+            <input type="password" class="entrada" th:field="*{senha}" minlength="8" autocomplete="new-password"
+                   th:placeholder="${novo} ? '' : 'Em branco mantém a atual'" th:required="${novo}">
+            <span class="campo-dica">Mínimo de 8 caracteres.</span>
+        </label>
+
+        <fieldset style="border: 0; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px">
+            <legend class="campo" style="margin-bottom: 10px">Perfil</legend>
+            <label class="opcao" th:each="p : ${perfis}">
+                <input type="radio" th:field="*{perfil}" th:value="${p}">
+                <span class="opcao-texto">
+                    <strong th:text="${p.rotulo}"></strong>
+                    <th:block th:switch="${p.name()}">
+                    <span th:case="'ADMIN'">Administra usuários e perfis, consulta pedidos, cardápio e auditoria.</span>
+                    <span th:case="'GERENTE'">Gerencia pedidos, aplica descontos, cancela, cuida do cardápio e consulta clientes e auditoria.</span>
+                    <span th:case="'ATENDENTE'">Cadastra e atualiza clientes, registra pedidos e acompanha o andamento.</span>
+                    </th:block>
+                </span>
+            </label>
+        </fieldset>
+
+        <div class="modal-rodape" style="border-top: 1px solid var(--linha); padding-top: 20px">
+            <a href="/usuarios" class="btn btn-borda btn-lg">Cancelar</a>
+            <button type="submit" class="btn btn-principal btn-lg">Salvar</button>
+        </div>
+    </form>
 
 </div>
 

@@ -1,15 +1,71 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
-<head>
-    <title>Home</title>
-</head>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <body>
 
-<div class="container-fluid vh-100 d-flex justify-content-center align-items-center" th:fragment="content">
-    <div class="text-center">
-        <h1>Bem-vindo!!!</h1>
-        <img th:src="@{/images/logo.png}" alt="Logo" width="500" height="500">
+<div th:fragment="content" class="tela">
+
+    <header class="cabecalho">
+        <div>
+            <div class="sobretitulo-mono" th:text="${hoje}"></div>
+            <h1 class="saudacao" th:text="${saudacao + ', ' + #authentication.name + '.'}">Boa noite.</h1>
+        </div>
+        <a href="/pedidos/novo" class="btn btn-principal btn-lg" sec:authorize="hasAnyRole('GERENTE', 'ATENDENTE')">
+            <svg class="ic" aria-hidden="true"><use href="/images/icones.svg#mais"></use></svg>Novo pedido
+        </a>
+    </header>
+
+    <!-- Quantos pedidos ha em cada etapa agora -->
+    <section class="contadores" aria-label="Pedidos em andamento">
+        <a href="/pedidos" class="contador" th:each="coluna : ${colunas}">
+            <span class="contador-rotulo" th:classappend="${'s-' + coluna.estilo}">
+                <span class="ponto"></span><span th:text="${coluna.titulo}"></span>
+            </span>
+            <span class="contador-numero" th:text="${#lists.size(coluna.pedidos)}">0</span>
+        </a>
+    </section>
+
+    <div class="duas-colunas">
+        <section class="principal cartao-lista" style="gap: 0">
+            <div class="cartao-topo">
+                <h2 class="subtitulo" style="font-weight: 600">Últimos pedidos</h2>
+                <a href="/auditoria" sec:authorize="hasAnyRole('ADMIN', 'GERENTE')">Ver auditoria</a>
+            </div>
+            <ul class="movimentos">
+                <li th:if="${#lists.isEmpty(ultimos)}" class="muted">Nenhum pedido registrado ainda.</li>
+                <li th:each="pedido : ${ultimos}">
+                    <span class="hora" th:text="${#temporals.format(pedido.entrada.momento, 'HH:mm')}"></span>
+                    <a class="texto" th:href="@{/pedidos/{id}(id=${pedido.id})}">
+                        <span class="mono" th:text="${@exibir.codigo(pedido.id)}"></span>
+                        de <strong th:text="${pedido.nomeCliente}"></strong>
+                    </a>
+                    <span class="selo selo-p" th:classappend="${'s-' + pedido.status}">
+                        <span class="ponto"></span><span th:text="${pedido.status.rotulo}"></span>
+                    </span>
+                    <span class="mono" style="font-size: 14px" th:text="${@exibir.moeda(pedido.total)}"></span>
+                </li>
+            </ul>
+        </section>
+
+        <section class="lateral pilha">
+            <h2 class="sobretitulo">Atalhos</h2>
+            <a href="/pedidos" class="atalho">
+                <svg class="ic" aria-hidden="true"><use href="/images/icones.svg#quadro"></use></svg>Quadro de pedidos
+            </a>
+            <a href="/clientes" class="atalho" sec:authorize="hasAnyRole('GERENTE', 'ATENDENTE')">
+                <svg class="ic" aria-hidden="true"><use href="/images/icones.svg#clientes"></use></svg>Consultar clientes
+            </a>
+            <a href="/produtos" class="atalho">
+                <svg class="ic" aria-hidden="true"><use href="/images/icones.svg#cardapio"></use></svg>Cardápio
+            </a>
+            <a href="/auditoria" class="atalho" sec:authorize="hasAnyRole('ADMIN', 'GERENTE')">
+                <svg class="ic" aria-hidden="true"><use href="/images/icones.svg#auditoria"></use></svg>Trilha de auditoria
+            </a>
+            <a href="/usuarios" class="atalho" sec:authorize="hasRole('ADMIN')">
+                <svg class="ic" aria-hidden="true"><use href="/images/icones.svg#equipe"></use></svg>Equipe
+            </a>
+        </section>
     </div>
+
 </div>
 
 </body>

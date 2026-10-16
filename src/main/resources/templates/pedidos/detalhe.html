@@ -1,72 +1,127 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
-<head>
-    <title>Pedido</title>
-</head>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <body>
 
-<div th:fragment="content" th:with="p=${pedido}">
+<div th:fragment="content" class="tela" th:with="p=${pedido}, rotulo=${@exibir.codigo(pedido.id) + ' · ' + pedido.nomeCliente}">
 
-    <div class="d-flex align-items-center gap-3 mb-4">
-        <a href="/pedidos" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i></a>
-        <h2 class="fw-bold mb-0" th:text="${'Pedido de ' + p.nomeCliente}"></h2>
-        <span class="badge text-bg-dark fs-6" th:text="${p.status.rotulo}"></span>
-    </div>
-
-    <div class="alert alert-danger" th:if="${p.cancelamento != null}">
-        <strong>Cancelado</strong> por <span th:text="${p.cancelamento.usuario}"></span>
-        em <span th:text="${#temporals.format(p.cancelamento.momento, 'dd/MM/yyyy HH:mm')}"></span>.
-        Motivo: <em th:text="${p.motivoCancelamento}"></em>
-    </div>
-
-    <div class="row g-4">
-        <div class="col-lg-7">
-            <div class="card shadow-sm mb-3">
-                <div class="card-header fw-medium">Itens</div>
-                <ul class="list-group list-group-flush">
-                    <li class="list-group-item d-flex justify-content-between" th:each="item : ${p.itens}">
-                        <span>
-                            <span th:text="${item}"></span>
-                            <small class="text-muted"
-                                   th:text="${'(R$ ' + #numbers.formatDecimal(item.precoUnitario, 1, 'POINT', 2, 'COMMA') + ' cada)'}"></small>
-                        </span>
-                        <span th:text="${'R$ ' + #numbers.formatDecimal(item.subtotal, 1, 'POINT', 2, 'COMMA')}"></span>
-                    </li>
-                    <li class="list-group-item d-flex justify-content-between text-success" th:if="${p.carimboDesconto != null}">
-                        <span>
-                            Desconto de <span th:text="${#numbers.formatDecimal(p.percentualDesconto, 1, 'POINT', 2, 'COMMA') + '%'}"></span>
-                            <small th:text="${'por ' + p.carimboDesconto.usuario}"></small>
-                        </span>
-                        <span th:text="${'- R$ ' + #numbers.formatDecimal(p.desconto, 1, 'POINT', 2, 'COMMA')}"></span>
-                    </li>
-                    <li class="list-group-item d-flex justify-content-between fw-bold">
-                        <span>Total</span>
-                        <span th:text="${'R$ ' + #numbers.formatDecimal(p.total, 1, 'POINT', 2, 'COMMA')}"></span>
-                    </li>
-                </ul>
-            </div>
-            <div class="text-muted" th:if="${p.observacao}">
-                <i class="bi bi-chat-left-text me-1"></i><span th:text="${p.observacao}"></span>
-            </div>
+    <header class="cabecalho-volta">
+        <a href="/pedidos" class="btn-voltar" aria-label="Voltar ao quadro">
+            <svg class="ic" aria-hidden="true"><use href="/images/icones.svg#voltar"></use></svg>
+        </a>
+        <div>
+            <div class="sobretitulo-mono" th:text="${'Pedido ' + @exibir.codigo(p.id)}"></div>
+            <h1 class="titulo" style="margin: 0" th:text="${p.nomeCliente}"></h1>
         </div>
+        <span class="selo selo-grande" th:classappend="${'s-' + p.status}">
+            <span class="ponto"></span><span th:text="${p.status.rotulo}"></span>
+        </span>
+    </header>
 
-        <div class="col-lg-5">
-            <div class="card shadow-sm">
-                <div class="card-header fw-medium"><i class="bi bi-clock-history me-1"></i>Linha do tempo</div>
-                <div class="card-body">
-                    <div class="d-flex gap-3 mb-3" th:each="marco, volta : ${p.linhaDoTempo}">
-                        <i class="bi fs-5"
-                           th:classappend="${volta.last} ? 'bi-record-circle-fill text-primary' : 'bi-check-circle text-success'"></i>
-                        <div>
-                            <div class="fw-medium" th:text="${marco.status.rotulo}"></div>
-                            <div class="small text-muted"
-                                 th:text="${#temporals.format(marco.carimbo.momento, 'dd/MM/yyyy HH:mm:ss') + ' por ' + marco.carimbo.usuario}"></div>
-                        </div>
+    <div class="aviso aviso-erro" role="status" th:if="${p.cancelamento != null}">
+        <svg class="ic" aria-hidden="true"><use href="/images/icones.svg#erro"></use></svg>
+        <span>
+            Cancelado por <span th:text="${p.cancelamento.usuario}"></span>
+            em <span class="mono" th:text="${#temporals.format(p.cancelamento.momento, 'dd/MM/yyyy HH:mm')}"></span>.
+            Motivo: <span style="font-weight: 500" th:text="${p.motivoCancelamento}"></span>
+        </span>
+    </div>
+
+    <div class="duas-colunas">
+        <div class="principal">
+            <section class="cartao" style="gap: 14px">
+                <h2 class="subtitulo" style="font-weight: 600">Itens</h2>
+                <div class="item-linha" th:each="item : ${p.itens}">
+                    <div>
+                        <div style="font-weight: 600" th:text="${item.quantidade + '× ' + item.descricao}"></div>
+                        <div class="mono muted" style="font-size: 13px; font-weight: 500"
+                             th:text="${@exibir.moeda(item.precoUnitario) + ' cada'}"></div>
+                    </div>
+                    <span th:text="${@exibir.moeda(item.subtotal)}"></span>
+                </div>
+                <div class="separador-tracejado">
+                    <div class="item-linha muted"><span>Subtotal</span><span th:text="${@exibir.moeda(p.subtotal)}"></span></div>
+                    <div class="item-linha desconto-txt" th:if="${p.carimboDesconto != null}">
+                        <span th:text="${'Desconto de ' + @exibir.percentual(p.percentualDesconto) + ' · ' + p.carimboDesconto.usuario}"></span>
+                        <span th:text="${'− ' + @exibir.moeda(p.desconto)}"></span>
                     </div>
                 </div>
-            </div>
+                <div class="total-linha">
+                    <span>Total</span>
+                    <span class="valor-grande" th:classappend="${p.cancelamento != null} ? 'riscado'" th:text="${@exibir.moeda(p.total)}"></span>
+                </div>
+            </section>
+
+            <section class="nota" th:if="${p.observacao}">
+                <svg class="ic" aria-hidden="true"><use href="/images/icones.svg#balao"></use></svg>
+                <div><div class="sobretitulo">Observação</div><span th:text="${p.observacao}"></span></div>
+            </section>
+
+            <section class="acoes" aria-label="Ações">
+                <th:block sec:authorize="hasAnyRole('GERENTE', 'ATENDENTE')">
+                    <button th:each="etapa : ${p.status.seguintes()}" type="button" class="btn btn-escuro btn-lg"
+                            th:data-pedido="${p.id}" th:data-etapa="${etapa.name()}"
+                            th:text="${etapa.marcaSaida()} ? ${etapa.rotulo} : ${'Mover: ' + etapa.rotulo}"
+                            onclick="moverPedido(this)"></button>
+                </th:block>
+                <th:block sec:authorize="hasRole('GERENTE')" th:if="${p.status.emAberto()}">
+                    <button type="button" class="btn btn-ok-borda btn-lg"
+                            th:data-pedido="${p.id}" th:data-subtotal="${p.subtotal}"
+                            th:data-percentual="${p.percentualDesconto}" th:data-rotulo="${rotulo}"
+                            th:text="${p.carimboDesconto != null} ? 'Alterar desconto' : 'Aplicar desconto'"
+                            onclick="abrirDesconto(this)"></button>
+                    <button type="button" class="btn btn-perigo-borda btn-lg"
+                            th:data-pedido="${p.id}" th:data-rotulo="${rotulo}"
+                            onclick="abrirCancelamento(this)">Cancelar pedido</button>
+                </th:block>
+                <a class="btn-link" sec:authorize="hasAnyRole('ADMIN', 'GERENTE')"
+                   th:href="@{/auditoria(entidade='Pedido', registroId=${p.id})}">Ver na auditoria</a>
+            </section>
         </div>
+
+        <section class="lateral cartao">
+            <h2 class="subtitulo" style="font-weight: 600">Linha do tempo</h2>
+            <div class="caixinhas">
+                <div class="caixinha">
+                    <div class="sobretitulo">Entrada</div>
+                    <div class="mono" th:text="${#temporals.format(p.entrada.momento, 'HH:mm')}"></div>
+                    <div class="pequeno" style="color: var(--tinta-2)" th:text="${p.entrada.usuario}"></div>
+                </div>
+                <div class="caixinha">
+                    <div class="sobretitulo">Saída</div>
+                    <th:block th:if="${p.saida != null}">
+                        <div class="mono" th:text="${#temporals.format(p.saida.momento, 'HH:mm')}"></div>
+                        <div class="pequeno" style="color: var(--tinta-2)" th:text="${p.saida.usuario}"></div>
+                    </th:block>
+                    <div class="mono muted" th:if="${p.saida == null}"
+                         th:text="${p.cancelamento != null} ? 'não saiu' : 'ainda na loja'"></div>
+                </div>
+            </div>
+
+            <ol class="tempo">
+                <li th:each="marco, volta : ${p.linhaDoTempo}" th:class="${'s-' + marco.status}"
+                    th:classappend="${volta.last} ? 'atual'">
+                    <div class="tempo-trilho"><span class="tempo-bola"></span><span class="tempo-fio"></span></div>
+                    <div class="tempo-texto">
+                        <strong th:text="${marco.status.rotulo}"></strong>
+                        <span class="pequeno muted">
+                            <span class="mono" style="font-weight: 500" th:text="${#temporals.format(marco.carimbo.momento, 'dd/MM HH:mm:ss')}"></span>
+                            · <span th:text="${marco.carimbo.usuario}"></span>
+                        </span>
+                    </div>
+                </li>
+                <!-- Proxima etapa possivel, tracejada -->
+                <li class="futuro" th:unless="${#sets.isEmpty(p.status.seguintes())}">
+                    <div class="tempo-trilho"><span class="tempo-bola"></span><span class="tempo-fio"></span></div>
+                    <div class="tempo-texto">
+                        <strong><th:block th:each="etapa, volta : ${p.status.seguintes()}"><span th:text="${etapa.rotulo}"></span><th:block th:unless="${volta.last}"> ou </th:block></th:block></strong>
+                        <span class="pequeno">próxima etapa</span>
+                    </div>
+                </li>
+            </ol>
+        </section>
     </div>
+
+    <th:block th:replace="~{pedidos/acoes :: acoes}"></th:block>
 
 </div>
 

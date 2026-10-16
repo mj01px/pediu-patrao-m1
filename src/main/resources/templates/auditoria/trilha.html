@@ -1,64 +1,83 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
-<head>
-    <title>Auditoria</title>
-</head>
 <body>
 
-<div th:fragment="content">
+<div th:fragment="content" class="tela" style="gap: 24px">
 
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2 class="fw-bold mb-0"><i class="bi bi-fingerprint me-2 text-primary"></i>Trilha de auditoria</h2>
-        <span class="text-muted small"><i class="bi bi-lock-fill"></i> somente leitura</span>
-    </div>
-
-    <form method="get" th:action="@{/auditoria}" class="d-flex flex-wrap gap-2 mb-3">
-        <select name="entidade" class="form-select w-auto">
-            <option value="">Tudo</option>
-            <option th:each="e : ${entidades}" th:value="${e}" th:text="${e}" th:selected="${e == entidade}"></option>
-        </select>
-        <input type="text" name="registroId" class="form-control w-auto" placeholder="ID do registro"
-               th:value="${registroId}">
-        <button type="submit" class="btn btn-primary">Filtrar</button>
-        <a href="/auditoria" class="btn btn-link">Limpar</a>
-    </form>
-
-    <p class="text-muted" th:if="${#lists.isEmpty(eventos)}">Nenhum evento registrado.</p>
-
-    <div class="card shadow-sm mb-2" th:each="evento : ${eventos}">
-        <div class="card-body py-2">
-            <div class="d-flex flex-wrap justify-content-between gap-2">
-                <div>
-                    <span class="fw-semibold" th:text="${evento.tipo.rotulo}"></span>
-                    <a class="small text-muted ms-2"
-                       th:href="@{/auditoria(entidade=${evento.entidade}, registroId=${evento.registroId})}"
-                       th:text="${evento.entidade + ' #' + evento.registroId}"
-                       title="Ver todo o histórico deste registro"></a>
-                </div>
-                <div class="small">
-                    <i class="bi bi-person"></i> <span th:text="${evento.usuario}"></span>
-                    <span class="badge" th:classappend="${'text-bg-' + (evento.perfil?.cor ?: 'light')}"
-                          th:text="${evento.perfil}"></span>
-                    <span class="text-muted ms-2" th:text="${#temporals.format(evento.momento, 'dd/MM/yyyy HH:mm:ss')}"></span>
-                </div>
+    <header class="cabecalho">
+        <div>
+            <div class="sobretitulo com-icone" style="gap: 6px; font-size: 12px">
+                <svg class="ic ic-sm" aria-hidden="true" style="width: 14px; height: 14px"><use href="/images/icones.svg#cadeado"></use></svg>Somente leitura
             </div>
-
-            <table class="table table-sm table-borderless small mb-0 mt-1" th:unless="${#lists.isEmpty(evento.mudancas)}">
-                <tr th:each="m : ${evento.mudancas}">
-                    <td class="text-muted" style="width: 160px;" th:text="${m.campo}"></td>
-                    <td><del class="text-danger" th:text="${m.de} ?: '(vazio)'"></del></td>
-                    <td style="width: 24px;">→</td>
-                    <td class="text-success" th:text="${m.para} ?: '(vazio)'"></td>
-                </tr>
-            </table>
-
-            <div class="small mt-1" th:if="${evento.justificativa}">
-                <i class="bi bi-chat-quote"></i> <em th:text="${evento.justificativa}"></em>
-            </div>
+            <h1 class="titulo">Trilha de auditoria</h1>
         </div>
+    </header>
+
+    <!-- Entidade escolhida pelos segmentos (links); o ID do registro vai no formulario -->
+    <div class="filtros">
+        <nav class="segmentos" aria-label="Entidade">
+            <a th:href="@{/auditoria}" th:classappend="${#strings.isEmpty(entidade)} ? 'ativo'"
+               th:aria-current="${#strings.isEmpty(entidade)} ? 'page'">Tudo</a>
+            <a th:each="e : ${entidades}" th:href="@{/auditoria(entidade=${e})}"
+               th:classappend="${e == entidade} ? 'ativo'" th:aria-current="${e == entidade} ? 'page'"
+               th:text="${e == 'Pedido' ? 'Pedidos' : (e == 'Cliente' ? 'Clientes' : 'Usuários')}"></a>
+        </nav>
+        <form method="get" th:action="@{/auditoria}" class="acoes">
+            <input type="hidden" name="entidade" th:value="${entidade}" th:if="${!#strings.isEmpty(entidade)}">
+            <input type="text" name="registroId" class="entrada mono" style="width: 240px" aria-label="ID do registro"
+                   placeholder="ID do registro" th:value="${registroId}">
+            <button type="submit" class="btn btn-escuro btn-lg">Filtrar</button>
+            <a th:href="@{/auditoria}" class="btn-link" th:if="${!#strings.isEmpty(registroId)}">Limpar</a>
+        </form>
     </div>
 
-    <p class="text-muted small mt-3">Até 300 eventos mais recentes. Telefones aparecem só com os 4 últimos dígitos.</p>
+    <p class="cartao muted" th:if="${#lists.isEmpty(eventos)}">Nenhum evento registrado.</p>
+
+    <th:block th:each="evento, volta : ${eventos}"
+              th:with="dia=${#temporals.format(evento.momento, 'dd/MM/yyyy')}">
+        <!-- Cabecalho do dia sempre que a data muda (a lista ja vem do mais novo para o mais antigo) -->
+        <h2 class="dia" th:if="${volta.first or dia != #temporals.format(eventos[volta.index - 1].momento, 'dd/MM/yyyy')}"
+            th:text="${dia}"></h2>
+
+        <article class="evento">
+            <div class="evento-topo">
+                <div>
+                    <span class="selo tipo" th:classappend="${'ev-' + evento.tipo}" th:text="${evento.tipo.rotulo}"></span>
+                    <a class="evento-alvo" title="Ver todo o histórico deste registro"
+                       th:href="@{/auditoria(entidade=${evento.entidade}, registroId=${evento.registroId})}"
+                       th:text="${evento.entidade + ' ' + (evento.entidade == 'Pedido' ? @exibir.codigo(evento.registroId) : '#' + evento.registroId)}"></a>
+                </div>
+                <div>
+                    <span class="mono" th:text="${evento.usuario}"></span>
+                    <span class="selo selo-p" th:if="${evento.perfil != null}" th:classappend="${'perfil-' + evento.perfil}"
+                          th:text="${evento.perfil.rotulo}"></span>
+                    <span class="mono muted" style="font-weight: 500" th:text="${#temporals.format(evento.momento, 'HH:mm:ss')}"></span>
+                </div>
+            </div>
+
+            <div class="rolagem" th:unless="${#lists.isEmpty(evento.mudancas)}">
+                <table class="mudancas">
+                    <thead>
+                        <tr><th>Campo</th><th>Antes</th><th>Depois</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="m : ${evento.mudancas}">
+                            <td th:text="${m.campo}"></td>
+                            <td><span class="antes" th:text="${m.de} ?: '(vazio)'"></span></td>
+                            <td><span class="depois" th:text="${m.para} ?: '(vazio)'"></span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="justificativa" th:if="${evento.justificativa}">
+                <svg class="ic" aria-hidden="true"><use href="/images/icones.svg#balao"></use></svg>
+                <span><strong>Justificativa:</strong> <span th:text="${evento.justificativa}"></span></span>
+            </div>
+        </article>
+    </th:block>
+
+    <p class="pequeno muted">Mostra até 300 eventos mais recentes. Telefones aparecem só com os 4 últimos dígitos; o valor das senhas nunca é registrado.</p>
 
 </div>
 

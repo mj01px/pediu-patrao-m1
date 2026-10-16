@@ -30,24 +30,34 @@ public class PedidoTelaController {
         this.produtoService = produtoService;
     }
 
-    /** Uma coluna do quadro: titulo, cor e os pedidos que estao naquelas etapas. */
+    /** Uma coluna do quadro: titulo, status que da a cor (classe s-STATUS no CSS) e os pedidos daquelas etapas. */
     public static class Coluna {
         private final String titulo;
-        private final String cor;
+        private final StatusPedido estilo;
         private final List<Pedido> pedidos;
 
-        Coluna(String titulo, String cor, List<Pedido> todos, Set<StatusPedido> etapas) {
+        Coluna(String titulo, StatusPedido estilo, List<Pedido> todos, Set<StatusPedido> etapas) {
             this.titulo = titulo;
-            this.cor = cor;
+            this.estilo = estilo;
             this.pedidos = todos.stream().filter(p -> etapas.contains(p.getStatus())).toList();
+        }
+
+        /** As quatro colunas de pedidos em andamento, usadas no quadro e nos contadores do inicio. */
+        static List<Coluna> emAndamento(List<Pedido> todos) {
+            return List.of(
+                    new Coluna("Recebidos", StatusPedido.RECEBIDO, todos, EnumSet.of(StatusPedido.RECEBIDO)),
+                    new Coluna("No forno", StatusPedido.EM_PREPARACAO, todos, EnumSet.of(StatusPedido.EM_PREPARACAO)),
+                    new Coluna("Prontos", StatusPedido.PRONTO, todos, EnumSet.of(StatusPedido.PRONTO)),
+                    new Coluna("Saíram", StatusPedido.SAIU_PARA_ENTREGA, todos,
+                            EnumSet.of(StatusPedido.SAIU_PARA_ENTREGA, StatusPedido.RETIRADO)));
         }
 
         public String getTitulo() {
             return titulo;
         }
 
-        public String getCor() {
-            return cor;
+        public StatusPedido getEstilo() {
+            return estilo;
         }
 
         public List<Pedido> getPedidos() {
@@ -58,20 +68,19 @@ public class PedidoTelaController {
     @GetMapping("/pedidos")
     public String quadro(Model model) {
         List<Pedido> todos = pedidoService.listar();
-        model.addAttribute("colunas", List.of(
-                new Coluna("Recebidos", "secondary", todos, EnumSet.of(StatusPedido.RECEBIDO)),
-                new Coluna("No forno", "warning", todos, EnumSet.of(StatusPedido.EM_PREPARACAO)),
-                new Coluna("Prontos", "success", todos, EnumSet.of(StatusPedido.PRONTO)),
-                new Coluna("Saíram", "info", todos, EnumSet.of(StatusPedido.SAIU_PARA_ENTREGA, StatusPedido.RETIRADO))));
-        model.addAttribute("encerrados", new Coluna("Encerrados", "dark", todos,
-                EnumSet.of(StatusPedido.FINALIZADO, StatusPedido.CANCELADO)).getPedidos());
+        List<Coluna> colunas = Coluna.emAndamento(todos);
+        model.addAttribute("colunas", colunas);
+        model.addAttribute("emAndamento", colunas.stream().mapToInt(c -> c.getPedidos().size()).sum());
+        model.addAttribute("encerrados", todos.stream()
+                .filter(p -> p.getStatus() == StatusPedido.FINALIZADO || p.getStatus() == StatusPedido.CANCELADO)
+                .toList());
         return Telas.abrir(model, "pedidos/quadro");
     }
 
     @GetMapping("/pedidos/novo")
     public String novo(Model model) {
         model.addAttribute("clientes", clienteService.listar());
-        model.addAttribute("produtos", produtoService.listarDisponiveis());
+        model.addAttribute("grupos", Telas.porTipo(produtoService.listarDisponiveis()));
         return Telas.abrir(model, "pedidos/novo");
     }
 

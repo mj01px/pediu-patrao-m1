@@ -1,47 +1,53 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
-<head>
-    <title>Equipe</title>
-</head>
 <body>
 
-<div th:fragment="content">
+<div th:fragment="content" class="tela" style="gap: 24px">
 
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2 class="fw-bold mb-0"><i class="bi bi-people-fill me-2 text-primary"></i>Equipe</h2>
-        <a href="/usuarios/novo" class="btn btn-primary"><i class="bi bi-person-plus me-1"></i> Novo usuário</a>
+    <header class="cabecalho">
+        <div>
+            <div class="sobretitulo" th:text="${#lists.size(usuarios) == 1} ? '1 pessoa' : ${#lists.size(usuarios) + ' pessoas'}"></div>
+            <h1 class="titulo">Equipe</h1>
+        </div>
+        <a href="/usuarios/novo" class="btn btn-principal">
+            <svg class="ic" aria-hidden="true"><use href="/images/icones.svg#mais"></use></svg>Novo usuário
+        </a>
+    </header>
+
+    <div class="aviso aviso-ok" role="status" th:if="${sucesso}">
+        <svg class="ic" aria-hidden="true"><use href="/images/icones.svg#check"></use></svg><span th:text="${sucesso}"></span>
+    </div>
+    <div class="aviso aviso-erro" role="alert" th:if="${erro}">
+        <svg class="ic" aria-hidden="true"><use href="/images/icones.svg#erro"></use></svg><span th:text="${erro}"></span>
     </div>
 
-    <div class="alert alert-success" th:if="${sucesso}" th:text="${sucesso}"></div>
-    <div class="alert alert-danger" th:if="${erro}" th:text="${erro}"></div>
-
-    <div class="row g-3">
-        <div class="col-sm-6 col-lg-4" th:each="usuario : ${usuarios}">
-            <div class="card shadow-sm h-100">
-                <div class="card-body d-flex align-items-center gap-3">
-                    <i class="bi bi-person-circle fs-1 text-secondary"></i>
-                    <div class="flex-grow-1">
-                        <div class="fw-semibold" th:text="${usuario.username}"></div>
-                        <span class="badge"
-                              th:classappend="${'text-bg-' + (usuario.perfil?.cor ?: 'light')}"
-                              th:text="${usuario.perfil?.rotulo} ?: 'Sem perfil'"></span>
-                        <span class="badge text-bg-light border" th:if="${usuario.username == #authentication.name}">você</span>
-                    </div>
-                </div>
-                <div class="card-footer bg-white d-flex gap-2 justify-content-end">
-                    <a th:href="@{/usuarios/editar/{id}(id=${usuario.id})}" class="btn btn-sm btn-outline-primary">
-                        <i class="bi bi-pencil"></i> Editar
-                    </a>
-                    <!-- O proprio usuario nao ve "Remover" (e o service tambem bloqueia) -->
-                    <form th:unless="${usuario.username == #authentication.name}"
-                          th:action="@{/usuarios/deletar/{id}(id=${usuario.id})}" method="post"
-                          onsubmit="return confirm('Remover este usuário?')">
-                        <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i> Remover</button>
-                    </form>
-                </div>
+    <div class="cartao-lista">
+        <div class="pessoa" th:each="usuario : ${usuarios}"
+             th:with="perfil=${usuario.perfil != null ? usuario.perfil.name() : ''}">
+            <span class="avatar" th:classappend="${'perfil-' + perfil}"
+                  th:text="${#strings.toUpperCase(#strings.substring(usuario.username, 0, 1))}"></span>
+            <div class="pessoa-nome">
+                <span th:text="${usuario.username}"></span>
+                <span class="selo selo-p voce" th:if="${usuario.username == #authentication.name}">você</span>
+            </div>
+            <span class="selo selo-perfil" th:classappend="${'perfil-' + perfil}"
+                  th:text="${usuario.perfil?.rotulo} ?: 'Sem perfil'"></span>
+            <div class="pessoa-acoes">
+                <a th:href="@{/usuarios/editar/{id}(id=${usuario.id})}" class="btn btn-borda btn-p">Editar</a>
+                <!-- O proprio usuario nao ve "Remover" (e o service tambem bloqueia) -->
+                <form th:unless="${usuario.username == #authentication.name}"
+                      th:action="@{/usuarios/deletar/{id}(id=${usuario.id})}" method="post"
+                      onsubmit="return confirm('Remover este usuário?')">
+                    <button type="submit" class="btn btn-perigo-borda btn-p">Remover</button>
+                </form>
             </div>
         </div>
     </div>
+
+    <p class="com-icone" style="align-items: flex-start; max-width: 720px">
+        <svg class="ic" aria-hidden="true" style="margin-top: 3px"><use href="/images/icones.svg#escudo"></use></svg>
+        Ninguém altera o próprio perfil nem remove a si mesmo, e o sistema sempre mantém pelo menos um administrador.
+    </p>
 
 </div>
 

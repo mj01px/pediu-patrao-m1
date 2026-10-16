@@ -1,116 +1,105 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
-<head>
-    <title>Cardápio</title>
-</head>
 <body>
 
-<div th:fragment="content">
+<div th:fragment="content" class="tela">
 
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2 class="fw-bold mb-0"><i class="bi bi-journal-text me-2 text-primary"></i>Cardápio</h2>
-        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalProduto"
-                sec:authorize="hasAnyRole('ADMIN', 'GERENTE')">
-            <i class="bi bi-plus-lg me-1"></i> Novo produto
-        </button>
-    </div>
-
-    <div class="card shadow-sm">
-        <div class="card-body p-0">
-            <table class="table table-hover align-middle mb-0">
-                <thead class="table-dark">
-                    <tr>
-                        <th class="ps-4">Produto</th>
-                        <th>Tipo</th>
-                        <th class="text-end">Preço</th>
-                        <th class="text-center">Disponível</th>
-                        <th class="text-end pe-4" sec:authorize="hasAnyRole('ADMIN', 'GERENTE')">Ações</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr th:if="${#lists.isEmpty(produtos)}">
-                        <td colspan="5" class="text-center text-muted py-5">Cardápio vazio.</td>
-                    </tr>
-                    <tr th:each="produto : ${produtos}" th:classappend="${produto.ativo == true} ? '' : 'text-muted'">
-                        <td class="ps-4" th:text="${produto.nome}"></td>
-                        <td th:text="${produto.tipo}"></td>
-                        <td class="text-end" th:text="${'R$ ' + #numbers.formatDecimal(produto.preco, 1, 'POINT', 2, 'COMMA')}"></td>
-                        <td class="text-center">
-                            <i class="bi" th:classappend="${produto.ativo == true} ? 'bi-check-circle-fill text-success' : 'bi-dash-circle'"></i>
-                        </td>
-                        <td class="text-end pe-4" sec:authorize="hasAnyRole('ADMIN', 'GERENTE')">
-                            <button type="button" class="btn btn-sm btn-outline-primary"
-                                    data-bs-toggle="modal" data-bs-target="#modalProduto"
-                                    th:data-id="${produto.id}" th:data-nome="${produto.nome}" th:data-tipo="${produto.tipo}"
-                                    th:data-preco="${produto.preco}" th:data-ativo="${produto.ativo}">
-                                <i class="bi bi-pencil-fill"></i>
-                            </button>
-                            <button type="button" class="btn btn-sm btn-outline-danger"
-                                    th:data-id="${produto.id}" onclick="removerProduto(this.dataset.id)">
-                                <i class="bi bi-trash-fill"></i>
-                            </button>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
+    <header class="cabecalho">
+        <div>
+            <div class="sobretitulo" th:text="${aVenda + ' à venda · ' + pausados + (pausados == 1 ? ' pausado' : ' pausados')}"></div>
+            <h1 class="titulo">Cardápio</h1>
         </div>
-    </div>
+        <button type="button" class="btn btn-principal" onclick="abrirProduto(this)"
+                sec:authorize="hasAnyRole('ADMIN', 'GERENTE')">
+            <svg class="ic" aria-hidden="true"><use href="/images/icones.svg#mais"></use></svg>Novo produto
+        </button>
+    </header>
+
+    <p class="cartao muted" th:if="${#maps.isEmpty(grupos)}">Cardápio vazio.</p>
+
+    <section th:each="grupo : ${grupos}">
+        <h2 class="grupo-cabecalho">
+            <span th:text="${grupo.key}"></span><span class="mono" th:text="${#lists.size(grupo.value)}"></span>
+        </h2>
+        <div class="produtos">
+            <article class="produto" th:each="produto : ${grupo.value}"
+                     th:classappend="${produto.disponivelParaVenda()} ? '' : 'pausado'">
+                <div class="produto-topo">
+                    <h3 th:text="${produto.nome}"></h3>
+                    <span class="selo selo-p" th:classappend="${produto.disponivelParaVenda()} ? 'a-venda' : 'em-pausa'"
+                          th:text="${produto.disponivelParaVenda()} ? 'À venda' : 'Pausado'"></span>
+                </div>
+                <div class="produto-base">
+                    <span class="produto-preco" th:text="${@exibir.moeda(produto.preco)}"></span>
+                    <div class="linha-acoes" sec:authorize="hasAnyRole('ADMIN', 'GERENTE')">
+                        <button type="button" class="btn btn-borda btn-icone" th:aria-label="${'Editar ' + produto.nome}"
+                                th:data-id="${produto.id}" th:data-nome="${produto.nome}" th:data-tipo="${produto.tipo}"
+                                th:data-preco="${produto.preco}" th:data-ativo="${produto.ativo}"
+                                onclick="abrirProduto(this)">
+                            <svg class="ic ic-sm" aria-hidden="true"><use href="/images/icones.svg#editar"></use></svg>
+                        </button>
+                        <button type="button" class="btn btn-perigo-borda btn-icone" th:aria-label="${'Remover ' + produto.nome}"
+                                th:data-id="${produto.id}" onclick="removerProduto(this.dataset.id)">
+                            <svg class="ic ic-sm" aria-hidden="true"><use href="/images/icones.svg#lixo"></use></svg>
+                        </button>
+                    </div>
+                </div>
+            </article>
+        </div>
+    </section>
 
     <!-- Modal unico para criar e editar (so ADMIN/GERENTE) -->
-    <div class="modal fade" id="modalProduto" tabindex="-1" sec:authorize="hasAnyRole('ADMIN', 'GERENTE')">
-        <div class="modal-dialog">
-            <form class="modal-content" onsubmit="salvarProduto(event)">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="tituloProduto">Produto</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <input type="hidden" id="produtoId">
-                    <div class="mb-3">
-                        <label for="produtoNome" class="form-label">Nome</label>
-                        <input type="text" id="produtoNome" class="form-control" maxlength="100" required>
-                    </div>
-                    <div class="row g-3">
-                        <div class="col-7">
-                            <label for="produtoTipo" class="form-label">Tipo</label>
-                            <select id="produtoTipo" class="form-select">
-                                <option>Pizza</option>
-                                <option>Esfiha</option>
-                                <option>Lanche</option>
-                                <option>Bebida</option>
-                                <option>Porção</option>
-                                <option>Adicional</option>
-                            </select>
-                        </div>
-                        <div class="col-5">
-                            <label for="produtoPreco" class="form-label">Preço (R$)</label>
-                            <input type="number" id="produtoPreco" class="form-control" step="0.01" min="0.01" required>
-                        </div>
-                    </div>
-                    <div class="form-check form-switch mt-3">
-                        <input class="form-check-input" type="checkbox" id="produtoAtivo">
-                        <label class="form-check-label" for="produtoAtivo">Disponível para venda</label>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Fechar</button>
-                    <button type="submit" class="btn btn-success">Salvar</button>
-                </div>
-            </form>
-        </div>
-    </div>
+    <dialog class="modal" id="modalProduto" aria-labelledby="tituloProduto" sec:authorize="hasAnyRole('ADMIN', 'GERENTE')">
+        <form onsubmit="salvarProduto(event)">
+            <div class="modal-topo">
+                <h2 class="modal-titulo" id="tituloProduto">Produto</h2>
+                <button type="button" class="modal-fechar" aria-label="Fechar" onclick="this.closest('dialog').close()">
+                    <svg class="ic" aria-hidden="true"><use href="/images/icones.svg#fechar"></use></svg>
+                </button>
+            </div>
+
+            <input type="hidden" id="produtoId">
+            <label class="campo">Nome
+                <input type="text" id="produtoNome" class="entrada" maxlength="100" required>
+            </label>
+            <div class="grade-2" style="grid-template-columns: 1fr 1fr">
+                <label class="campo">Tipo
+                    <select id="produtoTipo" class="entrada">
+                        <option>Pizza</option>
+                        <option>Esfiha</option>
+                        <option>Lanche</option>
+                        <option>Bebida</option>
+                        <option>Porção</option>
+                        <option>Adicional</option>
+                    </select>
+                </label>
+                <label class="campo">Preço (R$)
+                    <input type="number" id="produtoPreco" class="entrada mono" step="0.01" min="0.01" required>
+                </label>
+            </div>
+            <label class="interruptor">
+                <input type="checkbox" id="produtoAtivo">Disponível para venda
+            </label>
+
+            <div class="modal-rodape">
+                <button type="button" class="btn btn-borda btn-lg" onclick="this.closest('dialog').close()">Voltar</button>
+                <button type="submit" class="btn btn-principal btn-lg">Salvar</button>
+            </div>
+        </form>
+    </dialog>
 
     <script>
         // O mesmo modal serve para novo (botao sem data-id) e edicao (botao com data-id)
-        document.getElementById('modalProduto')?.addEventListener('show.bs.modal', evento => {
-            const dados = evento.relatedTarget.dataset;
+        function abrirProduto(botao) {
+            const dados = botao.dataset;
             document.getElementById('tituloProduto').textContent = dados.id ? 'Editar produto' : 'Novo produto';
             document.getElementById('produtoId').value = dados.id || '';
             document.getElementById('produtoNome').value = dados.nome || '';
             document.getElementById('produtoTipo').value = dados.tipo || 'Pizza';
             document.getElementById('produtoPreco').value = dados.preco || '';
             document.getElementById('produtoAtivo').checked = dados.id ? dados.ativo === 'true' : true;
-        });
+            document.getElementById('modalProduto').showModal();
+        }
 
         async function salvarProduto(evento) {
             evento.preventDefault();

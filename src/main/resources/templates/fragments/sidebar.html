@@ -1,62 +1,65 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
-    <head>
-        <meta charset="UTF-8">
-        <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
-    </head>
-    <body>
-        <!-- Esconder menus aqui e so conforto visual: quem barra de verdade e o backend -->
-        <div th:fragment="sidebar">
-            <div id="sidebar" class="d-flex flex-column">
-                <h4 class="text-center pt-3 mb-1">Pediu Patrão</h4>
+<body>
+    <!-- Esconder menus aqui e so conforto visual: quem barra de verdade e o backend.
+         A tela ativa sai do nome do template que o Telas.abrir colocou em ${content}. -->
+    <nav th:fragment="sidebar" id="menu" class="menu" aria-label="Menu principal"
+         th:with="tela=${content ?: ''}">
+        <a class="marca" th:href="@{/}">
+            <span class="marca-icone"><svg class="ic" aria-hidden="true"><use href="/images/icones.svg#logo"></use></svg></span>
+            <span class="marca-nome">Pediu Patrão</span>
+        </a>
 
-                <div class="text-center small text-white-50 mb-3" sec:authorize="isAuthenticated()">
-                    <span sec:authentication="name"></span>
-                    <span th:each="papel : ${#authentication.authorities}"
-                          class="badge text-bg-light ms-1"
-                          th:text="${#strings.replace(papel.authority, 'ROLE_', '')}"></span>
+        <ul class="menu-lista">
+            <li>
+                <a th:href="@{/}" th:classappend="${#strings.startsWith(tela, 'home')} ? 'ativo'">
+                    <svg class="ic" aria-hidden="true"><use href="/images/icones.svg#casa"></use></svg>Início
+                </a>
+            </li>
+            <li>
+                <a th:href="@{/pedidos}" th:classappend="${#strings.startsWith(tela, 'pedidos')} ? 'ativo'">
+                    <svg class="ic" aria-hidden="true"><use href="/images/icones.svg#quadro"></use></svg>Pedidos
+                </a>
+            </li>
+            <li sec:authorize="hasAnyRole('GERENTE', 'ATENDENTE')">
+                <a th:href="@{/clientes}" th:classappend="${#strings.startsWith(tela, 'clientes')} ? 'ativo'">
+                    <svg class="ic" aria-hidden="true"><use href="/images/icones.svg#clientes"></use></svg>Clientes
+                </a>
+            </li>
+            <li>
+                <a th:href="@{/produtos}" th:classappend="${#strings.startsWith(tela, 'produtos')} ? 'ativo'">
+                    <svg class="ic" aria-hidden="true"><use href="/images/icones.svg#cardapio"></use></svg>Cardápio
+                </a>
+            </li>
+            <li sec:authorize="hasAnyRole('ADMIN', 'GERENTE')">
+                <a th:href="@{/auditoria}" th:classappend="${#strings.startsWith(tela, 'auditoria')} ? 'ativo'">
+                    <svg class="ic" aria-hidden="true"><use href="/images/icones.svg#auditoria"></use></svg>Auditoria
+                </a>
+            </li>
+            <li sec:authorize="hasRole('ADMIN')">
+                <a th:href="@{/usuarios}" th:classappend="${#strings.startsWith(tela, 'usuarios')} ? 'ativo'">
+                    <svg class="ic" aria-hidden="true"><use href="/images/icones.svg#equipe"></use></svg>Equipe
+                </a>
+            </li>
+        </ul>
+
+        <div class="menu-rodape" sec:authorize="isAuthenticated()">
+            <div class="quem" th:each="papel : ${#authentication.authorities}"
+                 th:with="perfil=${#strings.replace(papel.authority, 'ROLE_', '')}">
+                <span class="avatar" th:text="${#strings.toUpperCase(#strings.substring(#authentication.name, 0, 1))}">A</span>
+                <div>
+                    <span class="quem-nome" sec:authentication="name"></span>
+                    <span class="selo selo-p" th:classappend="${'perfil-' + perfil}"
+                          th:text="${#strings.capitalize(#strings.toLowerCase(perfil))}"></span>
                 </div>
-
-                <ul class="nav flex-column flex-grow-1">
-                    <li class="nav-item">
-                        <a class="nav-link" th:href="@{/}">
-                            <i class="bi bi-house"></i><span class="d-none d-md-inline">&nbsp;Início</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" th:href="@{/pedidos}">
-                            <i class="bi bi-kanban"></i><span class="d-none d-md-inline">&nbsp;Quadro de pedidos</span>
-                        </a>
-                    </li>
-                    <li class="nav-item" sec:authorize="hasAnyRole('GERENTE', 'ATENDENTE')">
-                        <a class="nav-link" th:href="@{/clientes}">
-                            <i class="bi bi-person-raised-hand"></i><span class="d-none d-md-inline">&nbsp;Clientes</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" th:href="@{/produtos}">
-                            <i class="bi bi-journal-text"></i><span class="d-none d-md-inline">&nbsp;Cardápio</span>
-                        </a>
-                    </li>
-                    <li class="nav-item" sec:authorize="hasAnyRole('ADMIN', 'GERENTE')">
-                        <a class="nav-link" th:href="@{/auditoria}">
-                            <i class="bi bi-fingerprint"></i><span class="d-none d-md-inline">&nbsp;Auditoria</span>
-                        </a>
-                    </li>
-                    <li class="nav-item" sec:authorize="hasRole('ADMIN')">
-                        <a class="nav-link" th:href="@{/usuarios}">
-                            <i class="bi bi-people-fill"></i><span class="d-none d-md-inline">&nbsp;Equipe</span>
-                        </a>
-                    </li>
-                </ul>
-
-                <!-- Logout e POST com CSRF (o th:action coloca o token sozinho) -->
-                <form th:action="@{/logout}" method="post" class="p-3">
-                    <button type="submit" class="btn btn-outline-light btn-sm w-100">
-                        <i class="bi bi-box-arrow-left"></i> Sair
-                    </button>
-                </form>
             </div>
+            <!-- Logout e POST com CSRF (o th:action coloca o token sozinho) -->
+            <form th:action="@{/logout}" method="post">
+                <button type="submit" class="btn-sair">
+                    <svg class="ic" aria-hidden="true"><use href="/images/icones.svg#sair"></use></svg>Sair
+                </button>
+            </form>
         </div>
-    </body>
+    </nav>
+</body>
 </html>

@@ -1,39 +1,45 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
-<head>
-    <title>Lista de Clientes</title>
-</head>
 <body>
-<div th:fragment="content">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2 class="fw-bold mb-0">
-            <i class="bi bi-person-raised-hand me-2 text-primary"></i>Clientes
-        </h2>
-        <a href="/clientes/novo" class="btn btn-primary" sec:authorize="hasRole('ATENDENTE')">
-            <i class="bi bi-plus-lg me-1"></i> Novo Cliente
+<div th:fragment="content" class="tela" style="gap: 24px">
+
+    <header class="cabecalho">
+        <div>
+            <div class="sobretitulo" id="totalClientes">&nbsp;</div>
+            <h1 class="titulo">Clientes</h1>
+        </div>
+        <a href="/clientes/novo" class="btn btn-principal" sec:authorize="hasRole('ATENDENTE')">
+            <svg class="ic" aria-hidden="true"><use href="/images/icones.svg#mais"></use></svg>Novo cliente
         </a>
+    </header>
+
+    <div class="aviso aviso-ok" role="status" th:if="${sucesso}">
+        <svg class="ic" aria-hidden="true"><use href="/images/icones.svg#check"></use></svg><span th:text="${sucesso}"></span>
+    </div>
+    <div class="aviso aviso-erro" role="alert" th:if="${erro}">
+        <svg class="ic" aria-hidden="true"><use href="/images/icones.svg#erro"></use></svg><span th:text="${erro}"></span>
     </div>
 
-    <div class="alert alert-success" th:if="${sucesso}" th:text="${sucesso}"></div>
-    <div class="alert alert-danger" th:if="${erro}" th:text="${erro}"></div>
+    <label class="busca" style="max-width: 480px">
+        <svg class="ic" aria-hidden="true"><use href="/images/icones.svg#busca"></use></svg>
+        <input type="search" id="filtro" class="entrada" aria-label="Buscar cliente"
+               placeholder="Buscar por nome ou telefone" oninput="desenharTabela()">
+    </label>
 
-    <input type="search" id="filtro" class="form-control mb-3" placeholder="Buscar por nome ou telefone"
-           oninput="desenharTabela()">
-
-    <div class="card shadow-sm">
-        <div class="card-body p-0">
-            <table class="table table-hover align-middle mb-0">
-                <thead class="table-dark">
-                    <tr>
-                        <th>Nome</th>
-                        <th>Telefone</th>
-                        <th>Endereço</th>
-                        <th class="text-end pe-4">Ações</th>
-                    </tr>
-                </thead>
-                <tbody id="clientes-tabela"></tbody>
-            </table>
-        </div>
+    <div class="cartao-lista rolagem">
+        <table class="tabela" style="min-width: 760px">
+            <thead>
+                <tr>
+                    <th>Nome</th>
+                    <th>Telefone</th>
+                    <th>Endereço</th>
+                    <th class="direita">Ações</th>
+                </tr>
+            </thead>
+            <tbody id="clientes-tabela">
+                <tr><td colspan="4" class="vazio">Carregando…</td></tr>
+            </tbody>
+        </table>
     </div>
 
     <!-- th:inline injeta as permissoes do usuario como booleanos JS (so para esconder botoes) -->
@@ -52,10 +58,11 @@
             const id = encodeURIComponent(c.id);
             let html = '';
             if (PODE_EDITAR) {
-                html += `<a href="/clientes/editar/${id}" class="btn btn-sm btn-outline-primary me-1"><i class="bi bi-pencil-fill"></i> Editar</a>`;
+                html += `<a href="/clientes/editar/${id}" class="btn btn-borda btn-p">${PP.icone('editar')}Editar</a>`;
             }
             if (PODE_REMOVER) {
-                html += `<button class="btn btn-sm btn-outline-danger" data-id="${PP.texto(c.id)}" onclick="removerCliente(this.dataset.id)"><i class="bi bi-trash-fill"></i> Excluir</button>`;
+                html += `<button type="button" class="btn btn-perigo-borda btn-p" data-id="${PP.texto(c.id)}"
+                            onclick="removerCliente(this.dataset.id)">${PP.icone('lixo')}Excluir</button>`;
             }
             return html;
         }
@@ -64,23 +71,31 @@
             const termo = document.getElementById('filtro').value.toLowerCase();
             const visiveis = clientes.filter(c => (c.nome + ' ' + c.telefone).toLowerCase().includes(termo));
             const corpo = document.getElementById('clientes-tabela');
+            document.getElementById('totalClientes').textContent =
+                clientes.length === 1 ? '1 cadastrado' : clientes.length + ' cadastrados';
 
             if (visiveis.length === 0) {
-                corpo.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-5">Nenhum cliente encontrado.</td></tr>';
+                corpo.innerHTML = '<tr><td colspan="4" class="vazio">Nenhum cliente encontrado.</td></tr>';
                 return;
             }
             // PP.texto escapa os dados: um nome como <script> aparece como texto, nao executa
             corpo.innerHTML = visiveis.map(c => `
                 <tr>
-                    <td>${PP.texto(c.nome)}</td>
-                    <td>${PP.texto(c.telefone)}</td>
-                    <td>${PP.texto(enderecoResumido(c))}</td>
-                    <td class="text-end pe-4 text-nowrap">${acoes(c)}</td>
+                    <td>
+                        <div class="pessoa-celula">
+                            <span class="avatar avatar-claro">${PP.texto((c.nome || '?').charAt(0).toUpperCase())}</span>
+                            <span>${PP.texto(c.nome)}</span>
+                        </div>
+                    </td>
+                    <td class="mono" style="font-size: 14px; font-weight: 500">${PP.texto(c.telefone)}</td>
+                    <td style="color: var(--tinta-2)">${PP.texto(enderecoResumido(c))}</td>
+                    <td><div class="linha-acoes">${acoes(c)}</div></td>
                 </tr>`).join('');
         }
 
         async function carregarClientes() {
             clientes = (await PP.api('/api/clientes')) || [];
+            clientes.sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR'));
             desenharTabela();
         }
 

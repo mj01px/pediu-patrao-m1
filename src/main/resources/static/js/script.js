@@ -1,16 +1,28 @@
-// Alternar sidebar em telas pequenas (o script fica no <head>, entao espera o HTML)
+// Menu lateral em telas pequenas (o script fica no <head>, entao espera o HTML)
 document.addEventListener('DOMContentLoaded', () => {
-    const botao = document.querySelector('.toggle-btn');
-    if (botao) {
-        botao.addEventListener('click', () => document.getElementById('sidebar').classList.toggle('active'));
+    const menu = document.getElementById('menu');
+    const botao = document.getElementById('abrirMenu');
+    if (menu && botao) {
+        botao.addEventListener('click', evento => {
+            evento.stopPropagation();
+            botao.setAttribute('aria-expanded', menu.classList.toggle('aberto'));
+        });
+        // Clicar fora do menu aberto fecha o menu
+        document.addEventListener('click', evento => {
+            if (menu.classList.contains('aberto') && !menu.contains(evento.target)) {
+                menu.classList.remove('aberto');
+                botao.setAttribute('aria-expanded', 'false');
+            }
+        });
     }
-});
 
-// Alternar submenu
-function toggleSubmenu(event, element) {
-    event.preventDefault();
-    element.parentElement.classList.toggle('open');
-}
+    // Clicar no fundo escuro de um <dialog class="modal"> fecha o modal
+    document.querySelectorAll('dialog.modal').forEach(modal => {
+        modal.addEventListener('click', evento => {
+            if (evento.target === modal) modal.close();
+        });
+    });
+});
 
 // Utilitarios compartilhados pelas telas do PediuPatrao
 const PP = {
@@ -49,10 +61,11 @@ const PP = {
         }
     },
 
-    // Aviso flutuante no canto da tela (some sozinho)
+    // Aviso flutuante no canto da tela (some sozinho). tipo: 'success' ou 'danger'
     avisar(mensagem, tipo = 'success') {
         const aviso = document.createElement('div');
-        aviso.className = `alert alert-${tipo} shadow`;
+        aviso.className = 'aviso ' + (tipo === 'danger' ? 'aviso-erro' : 'aviso-ok');
+        aviso.setAttribute('role', tipo === 'danger' ? 'alert' : 'status');
         aviso.textContent = mensagem;
         document.getElementById('avisos').appendChild(aviso);
         setTimeout(() => aviso.remove(), 7000);
@@ -66,5 +79,10 @@ const PP = {
 
     moeda(valor) {
         return Number(valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    },
+
+    // Icone do sprite /images/icones.svg, para HTML montado no JS
+    icone(nome) {
+        return `<svg class="ic" aria-hidden="true"><use href="/images/icones.svg#${nome}"></use></svg>`;
     }
 };

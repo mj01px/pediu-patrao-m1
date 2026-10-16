@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<body>
+
+<!-- Modais do gerente e funcoes das acoes de pedido. Usado no quadro e no detalhe:
+     <th:block th:replace="~{pedidos/acoes :: acoes}"></th:block> -->
+<th:block th:fragment="acoes">
+
+    <!-- Modal de desconto (so existe na pagina do GERENTE) -->
+    <dialog class="modal" id="modalDesconto" aria-labelledby="tituloDesconto" sec:authorize="hasRole('GERENTE')">
+        <form onsubmit="enviarDesconto(event)">
+            <div class="modal-topo">
+                <div>
+                    <div class="sobretitulo-mono" id="descontoRotulo"></div>
+                    <h2 class="modal-titulo" id="tituloDesconto">Aplicar desconto</h2>
+                </div>
+                <button type="button" class="modal-fechar" aria-label="Fechar" onclick="this.closest('dialog').close()">
+                    <svg class="ic" aria-hidden="true"><use href="/images/icones.svg#fechar"></use></svg>
+                </button>
+            </div>
+
+            <input type="hidden" id="descontoPedido">
+            <input type="hidden" id="descontoSubtotal">
+
+            <fieldset style="border: 0; margin: 0; padding: 0">
+                <legend class="campo" style="margin-bottom: 8px">Atalhos</legend>
+                <div class="atalhos" id="descontoAtalhos">
+                    <button type="button" data-valor="5" onclick="escolherDesconto(5)">5%</button>
+                    <button type="button" data-valor="10" onclick="escolherDesconto(10)">10%</button>
+                    <button type="button" data-valor="15" onclick="escolherDesconto(15)">15%</button>
+                    <button type="button" data-valor="20" onclick="escolherDesconto(20)">20%</button>
+                </div>
+            </fieldset>
+
+            <label class="campo">Percentual
+                <!-- Sem "max" de proposito: quem impoe o limite de 20% e o servidor -->
+                <span class="sufixo">
+                    <input type="text" inputmode="decimal" id="descontoPercentual" required autocomplete="off"
+                           oninput="previaDesconto()">
+                    <span>%</span>
+                </span>
+            </label>
+
+            <div class="conta">
+                <div class="conta-linha muted"><span>Subtotal</span><span id="previaSubtotal"></span></div>
+                <div class="conta-linha desconto-txt"><span>Desconto</span><span id="previaDesconto"></span></div>
+                <div class="conta-linha conta-total"><span>Novo total</span><span id="previaTotal"></span></div>
+            </div>
+            <p class="pequeno muted" style="margin-top: -6px">Até 20%, só antes da saída. O servidor valida e registra na auditoria.</p>
+
+            <div class="modal-rodape">
+                <button type="button" class="btn btn-borda btn-lg" onclick="this.closest('dialog').close()">Voltar</button>
+                <button type="submit" class="btn btn-ok btn-lg" id="descontoAplicar">Aplicar</button>
+            </div>
+        </form>
+    </dialog>
+
+    <!-- Modal de cancelamento (so existe na pagina do GERENTE) -->
+    <dialog class="modal" id="modalCancelamento" aria-labelledby="tituloCancelamento" sec:authorize="hasRole('GERENTE')">
+        <form onsubmit="enviarCancelamento(event)">
+            <div class="modal-topo">
+                <div>
+                    <div class="sobretitulo-mono" id="cancelamentoRotulo"></div>
+                    <h2 class="modal-titulo" id="tituloCancelamento">Cancelar pedido</h2>
+                </div>
+                <button type="button" class="modal-fechar" aria-label="Fechar" onclick="this.closest('dialog').close()">
+                    <svg class="ic" aria-hidden="true"><use href="/images/icones.svg#fechar"></use></svg>
+                </button>
+            </div>
+
+            <input type="hidden" id="cancelamentoPedido">
+
+            <div class="alerta-perigo">
+                <svg class="ic" aria-hidden="true"><use href="/images/icones.svg#alerta"></use></svg>
+                <span>Não tem volta. O pedido fica guardado como está, mas não aceita mais nenhuma alteração.</span>
+            </div>
+
+            <label class="campo">Motivo
+                <textarea id="cancelamentoMotivo" class="entrada" rows="3" maxlength="500"
+                          placeholder="Ex.: cliente desistiu por telefone" oninput="contarMotivo()"></textarea>
+                <span class="campo-dica-linha">
+                    <span class="campo-dica" id="motivoDica">Fica registrado na auditoria. Mínimo de 10 caracteres.</span>
+                    <span class="campo-dica mono" id="motivoContador">0/500</span>
+                </span>
+            </label>
+
+            <div class="modal-rodape">
+                <button type="button" class="btn btn-borda btn-lg" onclick="this.closest('dialog').close()">Voltar</button>
+                <button type="submit" class="btn btn-perigo btn-lg">Confirmar cancelamento</button>
+            </div>
+        </form>
+    </dialog>
+
+    <script>
+        async function moverPedido(botao) {
+            botao.disabled = true;
+            const url = `/api/pedidos/${encodeURIComponent(botao.dataset.pedido)}/status?status=${botao.dataset.etapa}`;
+            if (await PP.api(url, 'PUT')) {
+                location.reload();
+            } else {
+                botao.disabled = false;
+            }
+        }
+
+        function abrirDesconto(botao) {
+            document.getElementById('descontoPedido').value = botao.dataset.pedido;
+            document.getElementById('descontoSubtotal').value = botao.dataset.subtotal;
+            document.getElementById('descontoRotulo').textContent = botao.dataset.rotulo;
+            const atual = Number(botao.dataset.percentual) || 0;
+            document.getElementById('descontoPercentual').value = atual > 0 ? String(atual).replace('.', ',') : '';
+            previaDesconto();
+            document.getElementById('modalDesconto').showModal();
+            document.getElementById('descontoPercentual').focus();
+        }
+
+        function escolherDesconto(valor) {
+            document.getElementById('descontoPercentual').value = valor;
+            previaDesconto();
+        }
+
+        function lerPercentual() {
+            return Number(document.getElementById('descontoPercentual').value.replace(',', '.')) || 0;
+        }
+
+        function previaDesconto() {
+            const subtotal = Number(document.getElementById('descontoSubtotal').value) || 0;
+            const percentual = lerPercentual();
+            const desconto = subtotal * percentual / 100;
+            document.getElementById('previaSubtotal').textContent = PP.moeda(subtotal);
+            document.getElementById('previaDesconto').textContent = '− ' + PP.moeda(desconto);
+            document.getElementById('previaTotal').textContent = PP.moeda(subtotal - desconto);
+            document.getElementById('descontoAplicar').textContent =
+                percentual > 0 ? 'Aplicar ' + String(percentual).replace('.', ',') + '%' : 'Aplicar';
+            document.querySelectorAll('#descontoAtalhos button').forEach(b =>
+                b.classList.toggle('ativo', Number(b.dataset.valor) === percentual));
+        }
+
+        async function enviarDesconto(evento) {
+            evento.preventDefault();
+            const id = document.getElementById('descontoPedido').value;
+            if (await PP.api(`/api/pedidos/${encodeURIComponent(id)}/desconto`, 'PUT', { percentual: lerPercentual() })) {
+                location.reload();
+            }
+        }
+
+        function abrirCancelamento(botao) {
+            document.getElementById('cancelamentoPedido').value = botao.dataset.pedido;
+            document.getElementById('cancelamentoRotulo').textContent = botao.dataset.rotulo;
+            document.getElementById('cancelamentoMotivo').value = '';
+            contarMotivo();
+            document.getElementById('modalCancelamento').showModal();
+            document.getElementById('cancelamentoMotivo').focus();
+        }
+
+        // So orienta quem digita; o minimo de 10 caracteres e validado no servidor
+        function contarMotivo() {
+            const tamanho = document.getElementById('cancelamentoMotivo').value.trim().length;
+            const dica = document.getElementById('motivoDica');
+            document.getElementById('motivoContador').textContent = tamanho + '/500';
+            const curto = tamanho > 0 && tamanho < 10;
+            dica.classList.toggle('erro', curto);
+            dica.textContent = curto ? 'Escreva pelo menos 10 caracteres.'
+                                     : 'Fica registrado na auditoria. Mínimo de 10 caracteres.';
+        }
+
+        async function enviarCancelamento(evento) {
+            evento.preventDefault();
+            const id = document.getElementById('cancelamentoPedido').value;
+            const motivo = document.getElementById('cancelamentoMotivo').value;
+            if (await PP.api(`/api/pedidos/${encodeURIComponent(id)}/cancelamento`, 'POST', { motivo })) {
+                location.reload();
+            }
+        }
+    </script>
+</th:block>
+
+</body>
+</html>

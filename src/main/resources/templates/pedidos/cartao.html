@@ -2,65 +2,59 @@
 <html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <body>
 
-<!-- Cartao de um pedido no quadro. Uso: th:replace="~{pedidos/cartao :: cartao(${pedido})}" -->
-<div th:fragment="cartao(pedido)" class="card shadow-sm mb-2">
-    <div class="card-body p-2 small">
+<!-- Comanda de um pedido no quadro. Uso: th:replace="~{pedidos/cartao :: cartao(${pedido})}" -->
+<article th:fragment="cartao(pedido)" class="comanda"
+         th:data-busca="${#strings.toLowerCase(pedido.nomeCliente + ' ' + @exibir.codigo(pedido.id))}">
 
-        <div class="d-flex justify-content-between">
-            <strong th:text="${pedido.nomeCliente}"></strong>
-            <a th:href="@{/pedidos/{id}(id=${pedido.id})}" class="text-muted" title="Ver detalhes">
-                <i class="bi bi-box-arrow-up-right"></i>
-            </a>
-        </div>
-
-        <div class="text-muted">
-            <i class="bi bi-box-arrow-in-right"></i>
-            <span th:text="${#temporals.format(pedido.entrada.momento, 'HH:mm')}"></span>
-            por <span th:text="${pedido.entrada.usuario}"></span>
-        </div>
-
-        <ul class="list-unstyled my-1">
-            <li th:each="item : ${pedido.itens}" th:text="${item}"></li>
-        </ul>
-
-        <div class="d-flex justify-content-between align-items-center">
-            <span class="fw-semibold" th:text="${'R$ ' + #numbers.formatDecimal(pedido.total, 1, 'POINT', 2, 'COMMA')}"></span>
-            <span class="badge text-bg-success" th:if="${pedido.percentualDesconto.signum() > 0}"
-                  th:text="${'-' + #numbers.formatDecimal(pedido.percentualDesconto, 1, 'POINT', 2, 'COMMA') + '%'}"></span>
-        </div>
-
-        <div class="text-muted" th:if="${pedido.saida != null}">
-            <i class="bi bi-box-arrow-right"></i>
-            <span th:text="${pedido.status.rotulo}"></span>
-            <span th:text="${#temporals.format(pedido.saida.momento, 'HH:mm')}"></span>
-            por <span th:text="${pedido.saida.usuario}"></span>
-        </div>
-
-        <div class="mt-2 d-flex flex-wrap gap-1">
-            <!-- Botoes de avanco: so as etapas que o fluxo permite -->
-            <th:block sec:authorize="hasAnyRole('GERENTE', 'ATENDENTE')">
-                <button th:each="etapa : ${pedido.status.seguintes()}" type="button"
-                        class="btn btn-sm btn-primary"
-                        th:data-pedido="${pedido.id}" th:data-etapa="${etapa.name()}"
-                        th:text="${'Mover: ' + etapa.rotulo}"
-                        onclick="moverPedido(this)"></button>
-            </th:block>
-            <!-- Desconto e cancelamento: so GERENTE e so com o pedido ainda na loja -->
-            <th:block sec:authorize="hasRole('GERENTE')" th:if="${pedido.status.emAberto()}">
-                <button type="button" class="btn btn-sm btn-outline-success"
-                        data-bs-toggle="modal" data-bs-target="#modalDesconto"
-                        th:data-pedido="${pedido.id}" th:data-subtotal="${pedido.subtotal}">
-                    <i class="bi bi-percent"></i>
-                </button>
-                <button type="button" class="btn btn-sm btn-outline-danger"
-                        data-bs-toggle="modal" data-bs-target="#modalCancelamento"
-                        th:data-pedido="${pedido.id}">
-                    <i class="bi bi-x-lg"></i>
-                </button>
-            </th:block>
-        </div>
+    <div class="comanda-topo">
+        <span class="mono" th:text="${@exibir.codigo(pedido.id) + ' · ' + #temporals.format(pedido.entrada.momento, 'HH:mm')}"></span>
+        <a th:href="@{/pedidos/{id}(id=${pedido.id})}" aria-label="Ver detalhes do pedido">
+            <svg class="ic" aria-hidden="true"><use href="/images/icones.svg#abrir"></use></svg>
+        </a>
     </div>
-</div>
+
+    <div class="comanda-cliente" th:text="${pedido.nomeCliente}"></div>
+
+    <ul class="comanda-itens">
+        <li th:each="item : ${pedido.itens}" th:text="${item.quantidade + '× ' + item.descricao}"></li>
+    </ul>
+
+    <div class="comanda-nota" th:text="${'Entrada por ' + pedido.entrada.usuario}"></div>
+    <div class="comanda-saida" th:if="${pedido.saida != null}"
+         th:text="${pedido.status.rotulo + ' às ' + #temporals.format(pedido.saida.momento, 'HH:mm') + ' · ' + pedido.saida.usuario}"></div>
+
+    <div class="comanda-total">
+        <span class="mono" th:text="${@exibir.moeda(pedido.total)}"></span>
+        <span class="selo-desconto" th:if="${pedido.percentualDesconto.signum() > 0}"
+              th:text="${'−' + @exibir.percentual(pedido.percentualDesconto)}"></span>
+    </div>
+
+    <div class="comanda-botoes">
+        <!-- Botoes de avanco: so as etapas que o fluxo permite -->
+        <th:block sec:authorize="hasAnyRole('GERENTE', 'ATENDENTE')">
+            <button th:each="etapa : ${pedido.status.seguintes()}" type="button" class="btn btn-escuro btn-p"
+                    th:data-pedido="${pedido.id}" th:data-etapa="${etapa.name()}"
+                    th:text="${etapa.marcaSaida()} ? ${etapa.rotulo} : ${'Mover: ' + etapa.rotulo}"
+                    onclick="moverPedido(this)"></button>
+        </th:block>
+        <!-- Desconto e cancelamento: so GERENTE e so com o pedido ainda na loja -->
+        <th:block sec:authorize="hasRole('GERENTE')" th:if="${pedido.status.emAberto()}">
+            <button type="button" class="btn btn-ok-borda btn-icone" aria-label="Aplicar desconto"
+                    th:data-pedido="${pedido.id}" th:data-subtotal="${pedido.subtotal}"
+                    th:data-percentual="${pedido.percentualDesconto}"
+                    th:data-rotulo="${@exibir.codigo(pedido.id) + ' · ' + pedido.nomeCliente}"
+                    onclick="abrirDesconto(this)">
+                <svg class="ic" aria-hidden="true"><use href="/images/icones.svg#desconto"></use></svg>
+            </button>
+            <button type="button" class="btn btn-perigo-borda btn-icone" aria-label="Cancelar pedido"
+                    th:data-pedido="${pedido.id}"
+                    th:data-rotulo="${@exibir.codigo(pedido.id) + ' · ' + pedido.nomeCliente}"
+                    onclick="abrirCancelamento(this)">
+                <svg class="ic" aria-hidden="true"><use href="/images/icones.svg#fechar"></use></svg>
+            </button>
+        </th:block>
+    </div>
+</article>
 
 </body>
 </html>
