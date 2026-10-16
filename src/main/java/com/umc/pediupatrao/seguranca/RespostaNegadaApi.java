@@ -16,6 +16,8 @@ import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.security.web.csrf.CsrfException;
+import org.springframework.security.web.session.SessionInformationExpiredEvent;
+import org.springframework.security.web.session.SessionInformationExpiredStrategy;
 import org.springframework.stereotype.Component;
 
 /**
@@ -23,7 +25,8 @@ import org.springframework.stereotype.Component;
  * Nao envia WWW-Authenticate, entao o navegador nunca abre a janela de login Basic.
  */
 @Component
-public class RespostaNegadaApi implements AuthenticationEntryPoint, AccessDeniedHandler {
+public class RespostaNegadaApi implements AuthenticationEntryPoint, AccessDeniedHandler,
+        SessionInformationExpiredStrategy {
 
     private static final Logger log = LoggerFactory.getLogger(RespostaNegadaApi.class);
 
@@ -53,6 +56,12 @@ public class RespostaNegadaApi implements AuthenticationEntryPoint, AccessDenied
         log.warn("Acesso negado: usuario={} {} {}", request.getRemoteUser(), request.getMethod(), request.getRequestURI());
         responder(request, response, HttpStatus.FORBIDDEN, "acesso-negado",
                 "Seu perfil não pode executar esta operação.");
+    }
+
+    @Override
+    public void onExpiredSessionDetected(SessionInformationExpiredEvent evento) throws IOException {
+        responder(evento.getRequest(), evento.getResponse(), HttpStatus.UNAUTHORIZED, "sessao-encerrada",
+                "Seu acesso foi alterado por um administrador. Faça login de novo.");
     }
 
     private void responder(HttpServletRequest request, HttpServletResponse response, HttpStatus status,

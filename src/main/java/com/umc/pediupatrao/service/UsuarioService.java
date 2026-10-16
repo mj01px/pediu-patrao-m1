@@ -7,6 +7,7 @@ import com.umc.pediupatrao.entity.Usuario;
 import com.umc.pediupatrao.erro.NaoEncontradoException;
 import com.umc.pediupatrao.erro.NegocioException;
 import com.umc.pediupatrao.repository.UsuarioRepository;
+import com.umc.pediupatrao.seguranca.EncerradorDeSessoes;
 import com.umc.pediupatrao.seguranca.RegrasAcesso;
 import com.umc.pediupatrao.seguranca.UsuarioLogado;
 import java.util.List;
@@ -29,13 +30,15 @@ public class UsuarioService {
     private final PasswordEncoder passwordEncoder;
     private final UsuarioLogado usuarioLogado;
     private final ApplicationEventPublisher eventos;
+    private final EncerradorDeSessoes encerradorDeSessoes;
 
     public UsuarioService(UsuarioRepository usuarioRepository, PasswordEncoder passwordEncoder,
-            UsuarioLogado usuarioLogado, ApplicationEventPublisher eventos) {
+            UsuarioLogado usuarioLogado, ApplicationEventPublisher eventos, EncerradorDeSessoes encerradorDeSessoes) {
         this.usuarioRepository = usuarioRepository;
         this.passwordEncoder = passwordEncoder;
         this.usuarioLogado = usuarioLogado;
         this.eventos = eventos;
+        this.encerradorDeSessoes = encerradorDeSessoes;
     }
 
     public List<Usuario> listar() {
@@ -77,8 +80,10 @@ public class UsuarioService {
         }
         protegerContraAutoalteracao(alvo, form.getPerfil());
 
+        String loginAnterior = alvo.getUsername();
+        boolean mudouAcesso = alvo.getPerfil() != form.getPerfil() || !loginAnterior.equals(login) || form.informouSenha();
         Mudancas mudancas = Mudancas.nova()
-                .registrar("username", alvo.getUsername(), login)
+                .registrar("username", loginAnterior, login)
                 .registrar("perfil", alvo.getPerfil(), form.getPerfil());
         alvo.setUsername(login);
         alvo.setPerfil(form.getPerfil());
@@ -94,6 +99,10 @@ public class UsuarioService {
         if (!mudancas.vazia()) {
             eventos.publishEvent(RegistroAlteracao.de(TipoEvento.USUARIO_ALTERADO, ENTIDADE, id, mudancas));
         }
+        // Perfil, login ou senha novos so valem num login novo: quem estava logado sai na hora
+        if (mudouAcesso) {
+            encerradorDeSessoes.encerrar(loginAnterior);
+        }
         return salvo;
     }
 
@@ -106,6 +115,7 @@ public class UsuarioService {
             garantirOutroAdmin();
         }
         usuarioRepository.deleteById(id);
+        encerradorDeSessoes.encerrar(alvo.getUsername());
         eventos.publishEvent(RegistroAlteracao.de(TipoEvento.USUARIO_REMOVIDO, ENTIDADE, id,
                 Mudancas.nova().registrar("username", alvo.getUsername(), null).registrar("perfil", alvo.getPerfil(), null)));
     }

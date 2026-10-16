@@ -10,6 +10,7 @@ import com.umc.pediupatrao.repository.EventoAuditoriaRepository;
 import com.umc.pediupatrao.repository.PedidoRepository;
 import com.umc.pediupatrao.repository.ProdutoRepository;
 import com.umc.pediupatrao.repository.UsuarioRepository;
+import com.umc.pediupatrao.seguranca.EncerradorDeSessoes;
 import com.umc.pediupatrao.seguranca.UsuarioLogado;
 import java.math.BigDecimal;
 import org.junit.jupiter.api.Test;
@@ -43,7 +44,7 @@ class SegurancaMetodosTest {
         @Bean
         UsuarioService usuarioService() {
             return new UsuarioService(mock(UsuarioRepository.class), mock(PasswordEncoder.class),
-                    mock(UsuarioLogado.class), mock(ApplicationEventPublisher.class));
+                    mock(UsuarioLogado.class), mock(ApplicationEventPublisher.class), mock(EncerradorDeSessoes.class));
         }
 
         @Bean

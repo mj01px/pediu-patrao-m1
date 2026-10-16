@@ -15,15 +15,19 @@ import org.springframework.security.config.annotation.authentication.configurati
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.core.session.SessionRegistry;
+import org.springframework.security.core.session.SessionRegistryImpl;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
+import org.springframework.security.web.session.HttpSessionEventPublisher;
 
 /**
  * Duas cadeias de seguranca:
  *  1) /api/**  : respostas JSON, aceita sessao (telas) ou HTTP Basic (curl/Postman), nega o que nao estiver listado;
  *  2) telas    : login por formulario, CSRF obrigatorio.
+ * As duas consultam o SessionRegistry: sessao encerrada pelo EncerradorDeSessoes deixa de valer nas duas.
  * Alem disso, @EnableMethodSecurity liga o @PreAuthorize dos services (segunda barreira).
  */
 @Configuration
@@ -65,9 +69,21 @@ public class SecurityConfig {
         return authenticationConfiguration.getAuthenticationManager();
     }
 
+    /** Guarda quem esta logado em cada sessao, para o EncerradorDeSessoes achar as sessoes de um login. */
+    @Bean
+    public SessionRegistry sessionRegistry() {
+        return new SessionRegistryImpl();
+    }
+
+    /** Avisa o SessionRegistry quando uma sessao acaba ou troca de id; sem isso ele acumularia sessoes mortas. */
+    @Bean
+    public HttpSessionEventPublisher httpSessionEventPublisher() {
+        return new HttpSessionEventPublisher();
+    }
+
     @Bean
     @Order(1)
-    public SecurityFilterChain cadeiaApi(HttpSecurity http) throws Exception {
+    public SecurityFilterChain cadeiaApi(HttpSecurity http, SessionRegistry sessionRegistry) throws Exception {
         http
                 .securityMatcher("/api/**")
                 .authorizeHttpRequests(regras -> regras
@@ -91,6 +107,12 @@ public class SecurityConfig {
                         // Lista branca: qualquer rota de API nao prevista acima e negada
                         .anyRequest().denyAll()
                 )
+                // Sessao encerrada (perfil mudou) responde 401 em JSON em vez de seguir com as roles antigas
+                .sessionManagement(sessao -> sessao
+                        .maximumSessions(-1)
+                        .sessionRegistry(sessionRegistry)
+                        .expiredSessionStrategy(respostaNegadaApi)
+                )
                 .httpBasic(basic -> basic.authenticationEntryPoint(respostaNegadaApi))
                 .exceptionHandling(erros -> erros
                         .authenticationEntryPoint(respostaNegadaApi)
@@ -104,11 +126,11 @@ public class SecurityConfig {
 
     @Bean
     @Order(2)
-    public SecurityFilterChain cadeiaTelas(HttpSecurity http) throws Exception {
+    public SecurityFilterChain cadeiaTelas(HttpSecurity http, SessionRegistry sessionRegistry) throws Exception {
         http
                 .authorizeHttpRequests(regras -> regras
                         .requestMatchers(RECURSOS_PUBLICOS).permitAll()
-                        .requestMatchers("/usuarios/**").hasRole(ADMIN)
+                        .requestMatchers("/usuarios/**", "/admin/**").hasRole(ADMIN)
                         .requestMatchers("/auditoria/**").hasAnyRole(ADMIN, GERENTE)
                         .requestMatchers("/pedidos/novo").hasAnyRole(GERENTE, ATENDENTE)
                         .requestMatchers("/clientes/novo", "/clientes/salvar", "/clientes/editar/**").hasRole(ATENDENTE)
@@ -119,6 +141,12 @@ public class SecurityConfig {
                         .loginPage("/login")
                         .permitAll()
                         .successHandler(authenticationSuccessHandler())
+                )
+                // -1 = sem limite de sessoes por usuario; o registro serve so para encerrar sessoes
+                .sessionManagement(sessao -> sessao
+                        .maximumSessions(-1)
+                        .sessionRegistry(sessionRegistry)
+                        .expiredUrl("/login?expirada")
                 )
                 .logout(logout -> logout
                         .logoutUrl("/logout")
