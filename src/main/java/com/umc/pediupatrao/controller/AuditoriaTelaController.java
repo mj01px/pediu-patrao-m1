@@ -20,7 +20,7 @@ public class AuditoriaTelaController {
     public String trilha(@RequestParam(required = false) String entidade,
             @RequestParam(required = false) String registroId, Model model) {
         model.addAttribute("eventos", auditoriaService.pesquisar(entidade, registroId));
-        model.addAttribute("entidades", List.of("Pedido", "Cliente", "Usuario"));
+        model.addAttribute("entidades", List.of("Pedido", "Cliente", "Usuario", "Acesso"));
         model.addAttribute("entidade", entidade);
         model.addAttribute("registroId", registroId);
         return Telas.abrir(model, "auditoria/trilha");

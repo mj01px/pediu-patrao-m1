@@ -54,7 +54,7 @@ PediuPatrao/
 ├── src/main/java/.../service      # regras de negócio + @PreAuthorize
 ├── src/main/java/.../entity       # Pedido, StatusPedido, EventoAuditoria...
 ├── src/main/resources/templates   # telas Thymeleaf      →  http://localhost:8080
-└── src/test/java                  # 62 testes, sem MongoDB
+└── src/test/java                  # 64 testes, sem MongoDB
 ```
 
 ---
@@ -95,6 +95,7 @@ PediuPatrao/
       <b>🧾 Auditoria</b><br/><br/>
       <ul>
         <li>Pedidos, etapas, descontos, cancelamentos, clientes e usuários</li>
+        <li>Login e logout de cada funcionário, com o horário</li>
         <li>Usuário, perfil, data/hora, entidade, campos (antes → depois) e justificativa</li>
         <li>Somente leitura, para ADMIN e GERENTE</li>
         <li>Telefone mascarado e senha nunca registrada</li>
@@ -248,6 +249,11 @@ Controller → Service → regra na entidade → MongoDB
 | Desconto aplicado · cancelamento | Com percentual ou justificativa |
 | Inclusão · alteração · exclusão de cliente | Com cada campo alterado, antes e depois |
 | Inclusão · alteração · exclusão de usuário | Perfil e login; a senha aparece só como "redefinida" |
+| Login · logout no sistema | Quem entrou e saiu pela tela, com perfil e horário (aba **Logins**) |
+
+O login e o logout pela tela também entram, pelo `RegistroDeAcessos`, que escuta os
+eventos do Spring Security. Só o login e o perfil são gravados, nunca a senha, e as
+chamadas à API com HTTP Basic ficam de fora para não lotar a trilha.
 
 O `ComparadorCampos` declara uma vez quais campos do cliente são auditados e quais são
 sensíveis. O telefone aparece só com os 4 últimos dígitos, e a exclusão de cliente
@@ -332,7 +338,7 @@ servidor.
 ## `~/testes`
 
 ```bash
-./mvnw test                            # 62 testes, não precisam de MongoDB
+./mvnw test                            # 64 testes, não precisam de MongoDB
 ```
 
 | Suíte | O que prova |
@@ -344,6 +350,7 @@ servidor.
 | `PedidoServiceTest` | Preço vindo do cardápio, produto fora de venda recusado, desconto inválido sem gravar nem auditar |
 | `ComparadorCamposTest` | Só o que mudou entra no registro, com o antes e o depois, e o telefone vai mascarado |
 | `EncerradorDeSessoesTest` | Só as sessões do usuário alterado caem |
+| `RegistroDeAcessosTest` | Login e logout gravados com usuário, perfil e horário |
 
 ---
 

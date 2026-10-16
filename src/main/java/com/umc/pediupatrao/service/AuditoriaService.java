@@ -1,6 +1,7 @@
 package com.umc.pediupatrao.service;
 
 import com.umc.pediupatrao.entity.EventoAuditoria;
+import com.umc.pediupatrao.entity.TipoEvento;
 import com.umc.pediupatrao.repository.EventoAuditoriaRepository;
 import com.umc.pediupatrao.seguranca.Operador;
 import com.umc.pediupatrao.seguranca.RegrasAcesso;
@@ -15,6 +16,8 @@ import org.springframework.util.StringUtils;
 
 @Service
 public class AuditoriaService {
+
+    public static final String ENTIDADE_ACESSO = "Acesso";
 
     private static final Logger log = LoggerFactory.getLogger(AuditoriaService.class);
 
@@ -39,6 +42,16 @@ public class AuditoriaService {
         // So metadados no log: nada de valores, senhas ou dados pessoais
         log.info("auditoria tipo={} entidade={} id={} usuario={}",
                 alteracao.tipo(), alteracao.entidade(), alteracao.registroId(), operador.login());
+    }
+
+    /**
+     * Login e logout, chamados pelo RegistroDeAcessos. O operador vem do evento do Spring Security
+     * porque no logout o contexto ja foi limpo. O registro e o proprio login.
+     */
+    public void registrarAcesso(TipoEvento tipo, Operador operador) {
+        repositorio.save(new EventoAuditoria(usuarioLogado.agora(), operador.login(), operador.perfil(),
+                tipo, ENTIDADE_ACESSO, operador.login(), List.of(), null));
+        log.info("auditoria tipo={} usuario={}", tipo, operador.login());
     }
 
     @PreAuthorize(RegrasAcesso.SUPERVISAO)

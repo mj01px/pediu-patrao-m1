@@ -437,6 +437,8 @@ textarea.entrada { height: auto; padding: 12px 14px; resize: vertical; }
 .ev-PEDIDO_CANCELADO, .ev-CLIENTE_REMOVIDO, .ev-USUARIO_REMOVIDO { background: var(--perigo-fundo); color: var(--perigo); }
 .ev-CLIENTE_CADASTRADO, .ev-CLIENTE_ALTERADO { background: #FDF0DA; color: #8A4B00; }
 .ev-USUARIO_CRIADO, .ev-USUARIO_ALTERADO { background: #F0E9FA; color: #5B2E91; }
+.ev-LOGIN { background: #E4F3EC; color: #17663F; }
+.ev-LOGOUT { background: #EFEDEA; color: #57534E; }
 .mudancas { width: 100%; min-width: 520px; border-collapse: collapse; font-size: 14px; }
 .mudancas th { padding: 6px 12px 6px 0; text-align: left; font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--cinza); }
 .mudancas td { padding: 8px 12px 8px 0; border-top: 1px solid var(--linha-fraca); }

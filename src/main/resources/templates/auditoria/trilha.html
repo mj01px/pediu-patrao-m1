@@ -20,7 +20,7 @@
                th:aria-current="${#strings.isEmpty(entidade)} ? 'page'">Tudo</a>
             <a th:each="e : ${entidades}" th:href="@{/auditoria(entidade=${e})}"
                th:classappend="${e == entidade} ? 'ativo'" th:aria-current="${e == entidade} ? 'page'"
-               th:text="${e == 'Pedido' ? 'Pedidos' : (e == 'Cliente' ? 'Clientes' : 'Usuários')}"></a>
+               th:text="${e == 'Pedido' ? 'Pedidos' : (e == 'Cliente' ? 'Clientes' : (e == 'Usuario' ? 'Usuários' : 'Logins'))}"></a>
         </nav>
         <form method="get" th:action="@{/auditoria}" class="acoes">
             <input type="hidden" name="entidade" th:value="${entidade}" th:if="${!#strings.isEmpty(entidade)}">
@@ -45,7 +45,7 @@
                     <span class="selo tipo" th:classappend="${'ev-' + evento.tipo}" th:text="${evento.tipo.rotulo}"></span>
                     <a class="evento-alvo" title="Ver todo o histórico deste registro"
                        th:href="@{/auditoria(entidade=${evento.entidade}, registroId=${evento.registroId})}"
-                       th:text="${evento.entidade + ' ' + (evento.entidade == 'Pedido' ? @exibir.codigo(evento.registroId) : '#' + evento.registroId)}"></a>
+                       th:text="${evento.entidade == 'Acesso' ? 'Sessão de ' + evento.registroId : evento.entidade + ' ' + (evento.entidade == 'Pedido' ? @exibir.codigo(evento.registroId) : '#' + evento.registroId)}"></a>
                 </div>
                 <div>
                     <span class="mono" th:text="${evento.usuario}"></span>

@@ -30,6 +30,11 @@ public class UsuarioLogado {
         if (auth == null || !auth.isAuthenticated() || auth instanceof AnonymousAuthenticationToken) {
             throw new AuthenticationCredentialsNotFoundException("Nenhum usuário autenticado.");
         }
+        return operadorDe(auth);
+    }
+
+    /** Para quem ja tem a autenticacao em maos, como os eventos de login e logout. */
+    public Operador operadorDe(Authentication auth) {
         Perfil perfil = auth.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
                 .map(role -> role.replaceFirst("^ROLE_", ""))
