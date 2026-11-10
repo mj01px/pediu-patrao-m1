@@ -391,7 +391,7 @@ servidor.
 
 ## `~/vídeo`
 
-[_(link do vídeo aqui)_](https://youtu.be/E5tuR5p2QPg)
+[_(Video no Youtube)_](https://youtu.be/E5tuR5p2QPg)
 
 ---
 
