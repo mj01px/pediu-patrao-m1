@@ -30,6 +30,13 @@ public class TratadorErrosApi {
         return problema(HttpStatus.UNPROCESSABLE_ENTITY, "regra-de-negocio", ex.getMessage());
     }
 
+    @ExceptionHandler(FiltroInvalidoException.class)
+    public ProblemDetail filtro(FiltroInvalidoException ex) {
+        ProblemDetail problema = problema(HttpStatus.BAD_REQUEST, "filtro-invalido", ex.getMessage());
+        problema.setProperty("parametro", ex.getParametro());
+        return problema;
+    }
+
     @ExceptionHandler(NaoEncontradoException.class)
     public ProblemDetail naoEncontrado(NaoEncontradoException ex) {
         return problema(HttpStatus.NOT_FOUND, "nao-encontrado", ex.getMessage());
