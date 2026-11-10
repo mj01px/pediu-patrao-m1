@@ -391,7 +391,7 @@ servidor.
 
 ## `~/vídeo`
 
-_(link do vídeo aqui)_
+[_(link do vídeo aqui)_](https://youtu.be/E5tuR5p2QPg)
 
 ---
 
@@ -407,6 +407,7 @@ _(link do vídeo aqui)_
 | **Testes** | ![JUnit](https://img.shields.io/badge/JUnit_5-25A162?style=flat-square&logo=junit5&logoColor=white) ![Mockito](https://img.shields.io/badge/Mockito-78A641?style=flat-square&logoColor=white) |
 
 </div>
+
 
 ---
 
