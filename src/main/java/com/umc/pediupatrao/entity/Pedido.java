@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.Version;
+import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 /**
@@ -16,6 +17,8 @@ import org.springframework.data.mongodb.core.mapping.Document;
  * pelos metodos abrir, avancarPara, cancelar e aplicarDesconto, que validam
  * a regra antes de alterar qualquer coisa.
  */
+// O dashboard sempre filtra pelo periodo de entrada; sem o indice cada consulta varreria a colecao
+@CompoundIndex(name = "idx_entrada_momento", def = "{'entrada.momento': -1}")
 @Document(collection = "pedidos")
 public class Pedido {
 

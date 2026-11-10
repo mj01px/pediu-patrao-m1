@@ -31,7 +31,7 @@ const pediuPatrao = {
   backend:     ["Java 21", "Spring Boot 3.4", "Spring Security 6", "Spring Data MongoDB", "JUnit 5 + Mockito"],
   telas:       ["Thymeleaf", "CSS próprio, sem framework", "Ícones em sprite SVG", "<dialog> nativo"],
   perfis:      ["ADMIN", "GERENTE", "ATENDENTE"],
-  recursos:    ["Quadro de comandas", "Fluxo de status controlado", "Desconto e cancelamento do gerente", "Trilha de auditoria"],
+  recursos:    ["Quadro de comandas", "Fluxo de status controlado", "Desconto e cancelamento do gerente", "Trilha de auditoria", "Dashboard administrativo"],
   autor:       "Mauro Junior · github.com/mj01px",
 } as const;
 ```
@@ -54,7 +54,8 @@ PediuPatrao/
 ├── src/main/java/.../service      # regras de negócio + @PreAuthorize
 ├── src/main/java/.../entity       # Pedido, StatusPedido, EventoAuditoria...
 ├── src/main/resources/templates   # telas Thymeleaf      →  http://localhost:8080
-└── src/test/java                  # 64 testes, sem MongoDB
+├── docs/                          # requisitos, API do dashboard, testes e evidências
+└── src/test/java                  # 96 testes, sem MongoDB
 ```
 
 ---
@@ -103,6 +104,37 @@ PediuPatrao/
     </td>
   </tr>
 </table>
+
+---
+
+## `~/dashboard`
+
+Segunda parte da atividade: um **Dashboard Administrativo** (`/dashboard`, para ADMIN e
+GERENTE) alimentado por uma API própria em `/api/dashboard`.
+
+| | |
+|---|---|
+| **RF01** Indicadores | Faturamento líquido, pedidos, ticket médio, itens, cancelamentos e descontos, com variação contra o período anterior |
+| **RF02** Gráficos | Vendas por dia, semana, mês ou hora do dia, e participação por categoria |
+| **RF03** Situação | Pedidos por etapa e tempos médios até pronto, saída e finalização |
+| **RF04** Ranking | Produtos mais vendidos, por quantidade ou faturamento |
+| **RF05** Filtros | Período (com atalhos), categoria e situação; ficam na URL |
+| **RF06** API | Seis endpoints `GET`, ProblemDetail nos erros, consulta indexada por período |
+| **RF07** Atualização | Automática a cada 60 s, cancelamento de consulta antiga, estados de carregando, vazio e erro |
+
+| Documento | Conteúdo |
+|---|---|
+| [docs/REQUISITOS.md](docs/REQUISITOS.md) | Requisitos funcionais e não funcionais, regras dos indicadores e decisões de projeto |
+| [docs/API-DASHBOARD.md](docs/API-DASHBOARD.md) | Endpoints, parâmetros, exemplos de requisição e resposta, erros |
+| [docs/TESTES.md](docs/TESTES.md) | Testes automatizados, requisições reais e roteiro manual |
+
+Para ver o painel com histórico, suba com o perfil `demo` num banco separado. Ele cria
+clientes, mais itens no cardápio e cerca de 90 dias de pedidos, só se o banco não
+tiver pedidos:
+
+```bash
+MONGODB_URI=mongodb://localhost:27017/pediupatrao_demo ./mvnw spring-boot:run -Dspring-boot.run.profiles=demo
+```
 
 ---
 
@@ -287,6 +319,7 @@ ou Postman. Chamadas com Basic dispensam o token CSRF porque não usam cookie.
 | `GET` · `POST /api/produtos` · `PUT` · `DELETE /api/produtos/{id}` | Cardápio |
 | `GET` · `POST /api/usuarios` · `GET` · `PUT` · `DELETE /api/usuarios/{id}` | Usuários (ADMIN) |
 | `GET /api/auditoria` | Trilha, com filtros `entidade` e `registroId` |
+| `GET /api/dashboard/*` | Dashboard: `filtros`, `resumo`, `vendas`, `categorias`, `status`, `produtos/mais-vendidos` ([docs](docs/API-DASHBOARD.md)) |
 
 Todo erro sai em `ProblemDetail` (RFC 7807), com um `codigo` estável:
 
@@ -302,7 +335,7 @@ Todo erro sai em `ProblemDetail` (RFC 7807), com um `codigo` estável:
 
 | Status | `codigo` |
 |---|---|
-| 400 | `dados-invalidos` (com a lista `erros`), `formato-invalido` |
+| 400 | `dados-invalidos` (com a lista `erros`), `formato-invalido`, `filtro-invalido` (com o `parametro`) |
 | 401 | `nao-autenticado`, `sessao-encerrada` |
 | 403 | `acesso-negado`, `csrf-invalido` |
 | 404 | `nao-encontrado` |
@@ -338,7 +371,7 @@ servidor.
 ## `~/testes`
 
 ```bash
-./mvnw test                            # 64 testes, não precisam de MongoDB
+./mvnw test                            # 96 testes, não precisam de MongoDB
 ```
 
 | Suíte | O que prova |
@@ -351,6 +384,8 @@ servidor.
 | `ComparadorCamposTest` | Só o que mudou entra no registro, com o antes e o depois, e o telefone vai mascarado |
 | `EncerradorDeSessoesTest` | Só as sessões do usuário alterado caem |
 | `RegistroDeAcessosTest` | Login e logout gravados com usuário, perfil e horário |
+| `CalculadoraDashboardTest` | Indicadores, séries, categorias, ranking e tempos de um cenário calculado à mão |
+| `FiltroDashboardTest` · `DashboardApiTest` · `DashboardServiceTest` | Filtros e seus erros 400, acesso só de ADMIN e GERENTE, API somente leitura |
 
 ---
 

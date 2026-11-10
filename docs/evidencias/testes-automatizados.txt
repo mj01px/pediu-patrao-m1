@@ -1,0 +1,18 @@
+# Saída do ./mvnw test em 10/11/2026 14:14 (Java 21.0.12, sem MongoDB)
+
+Tests run: 13, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 3.059 s | com.umc.pediupatrao.controller.AcessoApiTest
+Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.034 s | com.umc.pediupatrao.controller.AcessoTelasTest
+Tests run: 9, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.315 s | com.umc.pediupatrao.controller.DashboardApiTest
+Tests run: 11, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.059 s | com.umc.pediupatrao.entity.PedidoTest
+Tests run: 21, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.058 s | com.umc.pediupatrao.entity.StatusPedidoTest
+Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.003 s | com.umc.pediupatrao.seguranca.EncerradorDeSessoesTest
+Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.039 s | com.umc.pediupatrao.seguranca.RegistroDeAcessosTest
+Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.004 s | com.umc.pediupatrao.service.ComparadorCamposTest
+Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.158 s | com.umc.pediupatrao.service.DashboardServiceTest
+Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.118 s | com.umc.pediupatrao.service.PedidoServiceTest
+Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.119 s | com.umc.pediupatrao.service.SegurancaMetodosTest
+Tests run: 13, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.023 s | com.umc.pediupatrao.service.dashboard.CalculadoraDashboardTest
+Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.008 s | com.umc.pediupatrao.service.dashboard.FiltroDashboardTest
+
+Tests run: 96, Failures: 0, Errors: 0, Skipped: 0
+BUILD SUCCESS

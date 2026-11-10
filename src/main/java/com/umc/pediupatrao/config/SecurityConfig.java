@@ -89,6 +89,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(regras -> regras
                         .requestMatchers("/api/usuarios/**").hasRole(ADMIN)
                         .requestMatchers("/api/auditoria/**").hasAnyRole(ADMIN, GERENTE)
+                        // Dashboard administrativo: somente leitura, para quem administra o estabelecimento
+                        .requestMatchers(HttpMethod.GET, "/api/dashboard/**").hasAnyRole(ADMIN, GERENTE)
 
                         .requestMatchers(HttpMethod.PUT, "/api/pedidos/*/desconto").hasRole(GERENTE)
                         .requestMatchers(HttpMethod.POST, "/api/pedidos/*/cancelamento").hasRole(GERENTE)
@@ -132,6 +134,7 @@ public class SecurityConfig {
                         .requestMatchers(RECURSOS_PUBLICOS).permitAll()
                         .requestMatchers("/usuarios/**", "/admin/**").hasRole(ADMIN)
                         .requestMatchers("/auditoria/**").hasAnyRole(ADMIN, GERENTE)
+                        .requestMatchers("/dashboard/**").hasAnyRole(ADMIN, GERENTE)
                         .requestMatchers("/pedidos/novo").hasAnyRole(GERENTE, ATENDENTE)
                         .requestMatchers("/clientes/novo", "/clientes/salvar", "/clientes/editar/**").hasRole(ATENDENTE)
                         .requestMatchers("/clientes/**").hasAnyRole(GERENTE, ATENDENTE)
