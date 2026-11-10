@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<!-- Dashboard administrativo. O HTML so traz a estrutura: tudo e preenchido pelo
+     /js/dashboard.js a partir da /api/dashboard (RF06). -->
+<div th:fragment="content" class="tela" id="dashboard">
+
+    <header class="cabecalho">
+        <div>
+            <div class="sobretitulo">Painel do estabelecimento</div>
+            <h1 class="titulo">Dashboard</h1>
+        </div>
+        <div class="atualizacao">
+            <span class="atualizacao-texto" id="atualizadoEm" aria-live="polite">Carregando…</span>
+            <label class="interruptor">
+                <input type="checkbox" id="autoAtualizar" checked>
+                <span>Atualizar a cada 60 s</span>
+            </label>
+            <button type="button" class="btn btn-borda btn-p" id="atualizar">
+                <svg class="ic" aria-hidden="true"><use href="/images/icones.svg#atualizar"></use></svg>Atualizar
+            </button>
+        </div>
+    </header>
+
+    <!-- RF05: filtros. Ficam na URL, entao o link da tela pode ser compartilhado com o filtro aplicado -->
+    <form class="cartao painel-filtros" id="filtros" novalidate>
+        <div class="segmentos" role="group" aria-label="Período rápido">
+            <button type="button" data-dias="1">Hoje</button>
+            <button type="button" data-dias="7">7 dias</button>
+            <button type="button" data-dias="30">30 dias</button>
+            <button type="button" data-dias="90">90 dias</button>
+        </div>
+        <div class="filtros-campos">
+            <label class="campo">De
+                <input type="date" class="entrada" name="inicio" id="fInicio" required>
+            </label>
+            <label class="campo">Até
+                <input type="date" class="entrada" name="fim" id="fFim" required>
+            </label>
+            <label class="campo">Categoria
+                <select class="entrada" name="tipo" id="fTipo"><option value="">Todas</option></select>
+            </label>
+            <label class="campo">Situação
+                <select class="entrada" name="status" id="fStatus"><option value="">Todas</option></select>
+            </label>
+            <div class="filtros-acoes">
+                <button type="submit" class="btn btn-escuro btn-p">Aplicar</button>
+                <button type="button" class="btn btn-borda btn-p" id="limpar">Limpar</button>
+            </div>
+        </div>
+        <p class="campo-dica erro" id="erroFiltro" hidden></p>
+    </form>
+
+    <div class="aviso aviso-erro" id="falha" role="alert" hidden>
+        <svg class="ic" aria-hidden="true"><use href="/images/icones.svg#erro"></use></svg>
+        <span id="falhaTexto"></span>
+        <button type="button" class="btn btn-perigo-borda btn-p" id="tentarDeNovo">Tentar de novo</button>
+    </div>
+
+    <!-- RF01: indicadores gerais -->
+    <section class="kpis" id="kpis" aria-label="Indicadores gerais" aria-busy="true">
+        <article class="kpi" data-kpi="faturamento">
+            <span class="kpi-rotulo">Faturamento</span>
+            <span class="kpi-valor">–</span>
+            <span class="kpi-nota"></span>
+        </article>
+        <article class="kpi" data-kpi="pedidosValidos">
+            <span class="kpi-rotulo">Pedidos</span>
+            <span class="kpi-valor">–</span>
+            <span class="kpi-nota"></span>
+        </article>
+        <article class="kpi" data-kpi="ticketMedio">
+            <span class="kpi-rotulo">Ticket médio</span>
+            <span class="kpi-valor">–</span>
+            <span class="kpi-nota"></span>
+        </article>
+        <article class="kpi" data-kpi="itensVendidos">
+            <span class="kpi-rotulo">Itens vendidos</span>
+            <span class="kpi-valor">–</span>
+            <span class="kpi-nota"></span>
+        </article>
+        <article class="kpi" data-kpi="cancelados">
+            <span class="kpi-rotulo">Cancelamentos</span>
+            <span class="kpi-valor">–</span>
+            <span class="kpi-nota"></span>
+        </article>
+        <article class="kpi" data-kpi="descontoConcedido">
+            <span class="kpi-rotulo">Descontos concedidos</span>
+            <span class="kpi-valor">–</span>
+            <span class="kpi-nota"></span>
+        </article>
+    </section>
+
+    <!-- RF02: vendas no tempo -->
+    <section class="cartao" aria-labelledby="tituloVendas">
+        <div class="cartao-cabeca">
+            <div>
+                <h2 class="subtitulo" id="tituloVendas">Vendas no período</h2>
+                <p class="muted" id="legendaVendas">Faturamento líquido, sem pedidos cancelados.</p>
+            </div>
+            <div class="cartao-controles">
+                <div class="segmentos" role="group" aria-label="Medida" id="medida">
+                    <button type="button" data-medida="faturamento" class="ativo">Faturamento</button>
+                    <button type="button" data-medida="pedidos">Pedidos</button>
+                </div>
+                <div class="segmentos" role="group" aria-label="Agrupamento" id="agrupamento">
+                    <button type="button" data-agrupamento="DIA" class="ativo">Dia</button>
+                    <button type="button" data-agrupamento="SEMANA">Semana</button>
+                    <button type="button" data-agrupamento="MES">Mês</button>
+                    <button type="button" data-agrupamento="HORA">Hora</button>
+                </div>
+            </div>
+        </div>
+        <div class="grafico"><canvas id="graficoVendas" role="img" aria-label="Gráfico de vendas no período"></canvas></div>
+        <p class="vazio-grafico muted" id="vendasVazio" hidden>Nenhuma venda no período.</p>
+        <details class="tabela-dados">
+            <summary>Ver os dados em tabela</summary>
+            <div class="rolagem"><table class="tabela" id="tabelaVendas"></table></div>
+        </details>
+    </section>
+
+    <div class="grade-dash">
+        <!-- RF03: situacao dos pedidos -->
+        <section class="cartao" aria-labelledby="tituloStatus">
+            <div class="cartao-cabeca">
+                <div>
+                    <h2 class="subtitulo" id="tituloStatus">Situação dos pedidos</h2>
+                    <p class="muted" id="totalStatus"></p>
+                </div>
+            </div>
+            <ul class="barras" id="listaStatus"></ul>
+            <div class="tempos" id="tempos"></div>
+        </section>
+
+        <!-- RF02: vendas por categoria -->
+        <section class="cartao" aria-labelledby="tituloCategorias">
+            <div class="cartao-cabeca">
+                <div>
+                    <h2 class="subtitulo" id="tituloCategorias">Vendas por categoria</h2>
+                    <p class="muted">Participação no faturamento.</p>
+                </div>
+            </div>
+            <ul class="barras" id="listaCategorias"></ul>
+        </section>
+    </div>
+
+    <!-- RF04: produtos mais vendidos -->
+    <section class="cartao-lista" aria-labelledby="tituloRanking">
+        <div class="cartao-topo">
+            <h2 class="subtitulo" id="tituloRanking">Produtos mais vendidos</h2>
+            <div class="segmentos" role="group" aria-label="Ordenar ranking" id="ordem">
+                <button type="button" data-ordem="QUANTIDADE" class="ativo">Quantidade</button>
+                <button type="button" data-ordem="FATURAMENTO">Faturamento</button>
+            </div>
+        </div>
+        <div class="rolagem">
+            <table class="tabela">
+                <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Produto</th>
+                    <th>Categoria</th>
+                    <th class="direita">Qtd.</th>
+                    <th class="direita">Faturamento</th>
+                    <th>Participação</th>
+                </tr>
+                </thead>
+                <tbody id="ranking"><tr><td colspan="6" class="vazio">Carregando…</td></tr></tbody>
+            </table>
+        </div>
+    </section>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"
+            integrity="sha512-CQBWl4fJHWbryGE+Pc7UAxWMUMNMWzWxF4SQo9CgkJIN1kx6djDQZjh3Y8SZ1d+6I+1zze6Z7kHXO7q3UyZAWw=="
+            crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script th:src="@{/js/dashboard.js}"></script>
+</div>
+
+</body>
+</html>

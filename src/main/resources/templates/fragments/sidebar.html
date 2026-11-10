@@ -16,6 +16,11 @@
                     <svg class="ic" aria-hidden="true"><use href="/images/icones.svg#casa"></use></svg>Início
                 </a>
             </li>
+            <li sec:authorize="hasAnyRole('ADMIN', 'GERENTE')">
+                <a th:href="@{/dashboard}" th:classappend="${#strings.startsWith(tela, 'dashboard')} ? 'ativo'">
+                    <svg class="ic" aria-hidden="true"><use href="/images/icones.svg#grafico"></use></svg>Dashboard
+                </a>
+            </li>
             <li>
                 <a th:href="@{/pedidos}" th:classappend="${#strings.startsWith(tela, 'pedidos')} ? 'ativo'">
                     <svg class="ic" aria-hidden="true"><use href="/images/icones.svg#quadro"></use></svg>Pedidos
